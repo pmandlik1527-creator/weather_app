@@ -376,6 +376,41 @@ def api_sync_meteo():
     count = open_weather_connector.sync_all_major_stations()
     return jsonify({"success": True, "synced_stations": count})
 
+@app.route("/api/social/sync-live-imd", methods=["POST"])
+def api_sync_live_imd():
+    """Crawls and ingests up-to-the-minute real-world #IMD and weather social posts."""
+    limit = int(request.args.get("limit") or (request.get_json(silent=True) or {}).get("limit", 15))
+    posts = social_connector.fetch_live_imd_social_posts(limit=limit)
+    return jsonify({
+        "success": True,
+        "count": len(posts),
+        "message": f"Successfully ingested {len(posts)} live #IMD social media posts.",
+        "posts": posts
+    })
+
+@app.route("/api/social/ingest", methods=["POST"])
+def api_ingest_custom_post():
+    """Allows ingesting and classifying an arbitrary custom Tweet / social post."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+    if not data or not data.get("text"):
+        return jsonify({"success": False, "error": "Post text is required."}), 400
+
+    try:
+        report = social_connector.ingest_custom_social_post(
+            raw_text=data.get("text"),
+            author_handle=data.get("author_handle"),
+            source_url=data.get("source_url"),
+            platform=data.get("platform", "twitter"),
+            media_urls=data.get("media_urls")
+        )
+        return jsonify({
+            "success": True,
+            "message": "Social media post analyzed and ingested successfully.",
+            "report": report
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
+
 # ==========================================
 # Real-Time Live Meteorological Endpoints
 # ==========================================

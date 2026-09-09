@@ -3,6 +3,7 @@ National Weather Big Data Analytics Platform (NWBDAP)
 All-India States & Districts Geographic Registry
 Comprehensive mapping for all 28 States and 8 Union Territories with 500+ Districts.
 """
+import re
 
 INDIA_STATES_DISTRICTS = {
     "Andhra Pradesh": {
@@ -633,3 +634,32 @@ def resolve_location(state_name=None, district_name=None, city_name=None):
 
     c = INDIA_STATES_DISTRICTS["Delhi"]["New Delhi"]
     return "Delhi", "New Delhi", c["lat"], c["lon"]
+
+def extract_location_from_text(text):
+    """
+    Extracts Indian State, District, and coordinates from arbitrary text using regex boundary matching.
+    Avoids false positives with short abbreviations or general climatic words (like 'monsoon').
+    """
+    if not text:
+        return "Delhi", "New Delhi", 28.6139, 77.2090
+
+    text_lower = text.lower()
+
+    # 1. First check states by length descending
+    for state in sorted(ALL_STATES, key=len, reverse=True):
+        if re.search(r'\b' + re.escape(state.lower()) + r'\b', text_lower):
+            for d_name, coords in INDIA_STATES_DISTRICTS[state].items():
+                clean_d = d_name.split('(')[0].strip().lower()
+                if len(clean_d) > 3 and re.search(r'\b' + re.escape(clean_d) + r'\b', text_lower):
+                    return state, d_name, coords['lat'], coords['lon']
+            first_d = list(INDIA_STATES_DISTRICTS[state].keys())[0]
+            c = INDIA_STATES_DISTRICTS[state][first_d]
+            return state, first_d, c['lat'], c['lon']
+
+    # 2. Check all districts across India by length descending
+    for d_clean, entry in sorted(ALL_DISTRICTS_LOOKUP.items(), key=lambda x: len(x[0]), reverse=True):
+        if len(d_clean) > 3 and re.search(r'\b' + re.escape(d_clean) + r'\b', text_lower):
+            return entry['state'], entry['district'], entry['lat'], entry['lon']
+
+    # 3. Default fallback to New Delhi
+    return "Delhi", "New Delhi", 28.6139, 77.2090

@@ -141,6 +141,50 @@ class StreamPipelineManager:
             finally:
                 self.queue.task_done()
 
+    def process_report_now(self, raw_report):
+        """Processes a single report synchronously through the ML enrichment pipeline."""
+        author = raw_report.get("author_handle", "anonymous")
+        source_type = raw_report.get("source_type", "social_media")
+        has_contact = bool(raw_report.get("citizen_contact"))
+
+        src_meta = source_verifier.verify_source(
+            author, source_type=source_type, has_verified_contact=has_contact
+        )
+        raw_report["author_credibility_tier"] = src_meta["tier"]
+        raw_report["source_credibility_score"] = src_meta["score"]
+
+        text = raw_report.get("raw_text", "")
+        cat_result = categorizer.predict(text)
+        raw_report["detected_category"] = cat_result["category"]
+        raw_report["category_confidence"] = cat_result["confidence"]
+
+        fake_result = fake_detector.evaluate(raw_report, src_meta["score"])
+        raw_report["authenticity_score"] = fake_result["authenticity_score"]
+        raw_report["is_fake"] = fake_result["is_fake"]
+        raw_report["fake_reasons"] = fake_result["reasons"]
+
+        if raw_report["is_fake"]:
+            raw_report["verification_status"] = "flagged_fake"
+        elif src_meta["is_official"] or source_type == "open_meteo":
+            raw_report["verification_status"] = "verified"
+        else:
+            raw_report["verification_status"] = "unverified"
+
+        report_id = insert_report(raw_report)
+        raw_report["id"] = report_id
+
+        if not raw_report["is_fake"] and report_id:
+            dedup_res = deduplicator.process_report(report_id, raw_report)
+            raw_report["cluster_id"] = dedup_res.get("cluster_id")
+
+        source_id = raw_report.get("source_id", "social_stream")
+        increment_source_ingested(source_id, 1)
+
+        with self.lock:
+            self.total_processed += 1
+
+        return raw_report
+
     def get_telemetry(self):
         """Returns real-time pipeline performance metrics."""
         with self.lock:

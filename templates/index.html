@@ -367,11 +367,17 @@
             <button id="btn-toggle-stream" class="btn btn-primary btn-sm">
                 <i class="fa-solid fa-play" id="stream-icon"></i> <span id="stream-btn-text">Start Live Stream</span>
             </button>
+            <button id="btn-sync-live-imd" class="btn btn-info btn-sm" title="Crawl Live #IMD reports and weather alerts from social media and syndication">
+                <i class="fa-solid fa-hashtag"></i> Sync #IMD
+            </button>
             <button id="btn-stream-pulse" class="btn btn-secondary btn-sm" title="Inject an immediate weather tweet">
-                <i class="fa-solid fa-bolt"></i> Ingest Now
+                <i class="fa-solid fa-bolt"></i> Pulse
             </button>
             <button id="btn-sync-meteo" class="btn btn-secondary btn-sm" title="Poll Open-Meteo Ground Stations">
-                <i class="fa-solid fa-tower-broadcast"></i> Sync Radar
+                <i class="fa-solid fa-tower-broadcast"></i> Radar
+            </button>
+            <button id="btn-open-social-ingest-modal" class="btn btn-outline-secondary btn-sm" title="Ingest a custom Tweet, post or URL directly into AI pipeline" onclick="openSocialModal()">
+                <i class="fa-brands fa-x-twitter"></i> + Post
             </button>
         </div>
 
@@ -464,6 +470,55 @@
             <button class="btn btn-primary btn-sm" onclick="closeInsatModal()">
                 Close
             </button>
+        </div>
+    </div>
+</div>
+
+<!-- Live Social Post & #IMD Intake Modal -->
+<div class="modal-backdrop" id="social-ingest-modal" style="display: none;">
+    <div class="modal-card modal-lg">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fa-brands fa-x-twitter" style="color:var(--accent-cyan);"></i> Ingest Live Social Media / #IMD Post
+            </div>
+            <button class="modal-close-btn" onclick="closeSocialModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:0.88rem; color:var(--text-secondary); margin-bottom:14px;">
+                Inject real-world citizen tweets, IMD announcements, or social media alerts directly into the AI classification, authenticity scoring, geolocation entity resolution, and incident clustering pipeline.
+            </p>
+            <form id="form-custom-social-ingest" onsubmit="handleCustomSocialSubmit(event)">
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-message"></i> Post Content / Weather Report Text *</label>
+                    <textarea id="social-post-text" class="form-control" rows="3" placeholder="e.g. Heavy waterlogging reported near Sion circle in Mumbai following torrential rain. IMD issues orange alert. #IMD #MumbaiRains" required></textarea>
+                </div>
+                <div class="row g-2 mb-3" style="display:flex; gap:12px;">
+                    <div style="flex:1;">
+                        <label class="form-label" style="font-size:0.82rem;"><i class="fa-solid fa-at"></i> Author Handle / Source</label>
+                        <input id="social-post-author" type="text" class="form-control form-control-sm" placeholder="@Indiametdept or @citizen_mumbai" />
+                    </div>
+                    <div style="flex:1;">
+                        <label class="form-label" style="font-size:0.82rem;"><i class="fa-solid fa-share-nodes"></i> Platform</label>
+                        <select id="social-post-platform" class="form-select form-select-sm">
+                            <option value="twitter">X / Twitter</option>
+                            <option value="mastodon">Mastodon</option>
+                            <option value="instagram">Instagram</option>
+                            <option value="citizen">Citizen Desk</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-size:0.82rem;"><i class="fa-solid fa-link"></i> Source URL / Tweet Link (Optional)</label>
+                    <input id="social-post-url" type="url" class="form-control form-control-sm" placeholder="https://x.com/Indiametdept/status/..." />
+                </div>
+                <div id="social-ingest-feedback" style="display:none; margin-bottom:12px; font-size:0.85rem; padding:8px 12px; border-radius:6px;"></div>
+                <div class="modal-footer" style="padding:0; border:none; display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeSocialModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="btn-submit-social-ingest">
+                        <i class="fa-solid fa-brain"></i> Analyze & Ingest Live
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

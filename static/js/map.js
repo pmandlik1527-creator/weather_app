@@ -565,11 +565,123 @@ function setupStreamControls() {
                 console.error("Radar sync error:", err);
             } finally {
                 syncRadarBtn.disabled = false;
-                syncRadarBtn.innerHTML = `<i class="fa-solid fa-tower-broadcast"></i> Sync Radar`;
+                syncRadarBtn.innerHTML = `<i class="fa-solid fa-tower-broadcast"></i> Radar`;
+            }
+        });
+    }
+
+    const syncLiveImdBtn = document.getElementById("btn-sync-live-imd");
+    if (syncLiveImdBtn) {
+        syncLiveImdBtn.addEventListener("click", async () => {
+            try {
+                syncLiveImdBtn.disabled = true;
+                syncLiveImdBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Ingesting...`;
+                const res = await fetch("/api/social/sync-live-imd", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ limit: 15 })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    await loadDashboardData();
+                    if (typeof showToastNotification === "function") {
+                        showToastNotification(`Ingested ${data.count} live #IMD social reports.`, "success");
+                    }
+                }
+            } catch (err) {
+                console.error("Live #IMD sync error:", err);
+            } finally {
+                syncLiveImdBtn.disabled = false;
+                syncLiveImdBtn.innerHTML = `<i class="fa-solid fa-hashtag"></i> Sync #IMD`;
             }
         });
     }
 }
+
+// Live Social Media Post Intake Modal Controls
+function openSocialModal() {
+    const modal = document.getElementById("social-ingest-modal");
+    if (modal) {
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+        const txt = document.getElementById("social-post-text");
+        if (txt) setTimeout(() => txt.focus(), 100);
+    }
+}
+
+function closeSocialModal() {
+    const modal = document.getElementById("social-ingest-modal");
+    if (modal) {
+        modal.style.display = "none";
+        document.body.style.overflow = "auto";
+        const fb = document.getElementById("social-ingest-feedback");
+        if (fb) fb.style.display = "none";
+    }
+}
+
+async function handleCustomSocialSubmit(e) {
+    if (e) e.preventDefault();
+    const btn = document.getElementById("btn-submit-social-ingest");
+    const fb = document.getElementById("social-ingest-feedback");
+    const text = document.getElementById("social-post-text")?.value;
+    const author = document.getElementById("social-post-author")?.value;
+    const platform = document.getElementById("social-post-platform")?.value || "twitter";
+    const sourceUrl = document.getElementById("social-post-url")?.value;
+
+    if (!text || !text.trim()) return;
+
+    try {
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing AI...`;
+        }
+        const res = await fetch("/api/social/ingest", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                text: text,
+                author_handle: author,
+                platform: platform,
+                source_url: sourceUrl
+            })
+        });
+        const result = await res.json();
+        if (result.success && result.report) {
+            const r = result.report;
+            if (fb) {
+                fb.style.display = "block";
+                fb.style.backgroundColor = "rgba(16, 185, 129, 0.15)";
+                fb.style.color = "#10b981";
+                fb.style.border = "1px solid rgba(16, 185, 129, 0.3)";
+                fb.innerHTML = `<strong><i class="fa-solid fa-circle-check"></i> Ingested!</strong> Detected Category: <b>${r.detected_category}</b> &bull; Location: <b>${r.city}, ${r.state}</b> &bull; Authenticity: <b>${r.authenticity_score}%</b>`;
+            }
+            await loadDashboardData();
+            setTimeout(() => {
+                closeSocialModal();
+                document.getElementById("form-custom-social-ingest")?.reset();
+            }, 1800);
+        } else {
+            if (fb) {
+                fb.style.display = "block";
+                fb.style.backgroundColor = "rgba(239, 68, 68, 0.15)";
+                fb.style.color = "#ef4444";
+                fb.style.border = "1px solid rgba(239, 68, 68, 0.3)";
+                fb.innerHTML = `<strong>Error:</strong> ${result.error || "Failed to process post."}`;
+            }
+        }
+    } catch (err) {
+        console.error("Ingest error:", err);
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-brain"></i> Analyze & Ingest Live`;
+        }
+    }
+}
+
+window.openSocialModal = openSocialModal;
+window.closeSocialModal = closeSocialModal;
+window.handleCustomSocialSubmit = handleCustomSocialSubmit;
 
 // INSAT-3DR High-Resolution Satellite Photo Modal Controls
 function openInsatModal() {

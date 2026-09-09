@@ -164,5 +164,36 @@ class TestAPI(unittest.TestCase):
         districts = data.get("districts", [])
         self.assertGreaterEqual(len(districts), 3)
 
+    def test_api_sync_live_imd(self):
+        """Verify /api/social/sync-live-imd ingests real-world #IMD reports."""
+        res = self.app.post("/api/social/sync-live-imd?limit=3")
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data.get("success"))
+        self.assertIn("count", data)
+        self.assertIn("posts", data)
+
+    def test_api_ingest_custom_social_post(self):
+        """Verify /api/social/ingest enriches custom weather tweet with AI pipeline."""
+        payload = {
+            "text": "Intense thunderstorm and waterlogging in Lucknow Charbagh area, roads inundated. #IMD #WeatherAlert",
+            "author_handle": "@lucknow_spotter",
+            "platform": "twitter"
+        }
+        res = self.app.post(
+            "/api/social/ingest",
+            data=json.dumps(payload),
+            content_type="application/json"
+        )
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data.get("success"))
+        report = data.get("report", {})
+        self.assertEqual(report.get("state"), "Uttar Pradesh")
+        self.assertEqual(report.get("city"), "Lucknow")
+        self.assertIn("detected_category", report)
+        self.assertIn("authenticity_score", report)
+        self.assertIn("id", report)
+
 if __name__ == "__main__":
     unittest.main()

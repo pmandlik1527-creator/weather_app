@@ -8,8 +8,12 @@ import random
 import threading
 import time
 import uuid
+import re
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+import requests
 import config
+from data.india_districts import extract_location_from_text
 from ingestion.stream_manager import stream_pipeline
 
 # Rich pool of realistic weather posts reflecting actual Indian meteorology and social platforms
@@ -169,6 +173,8 @@ class SocialMediaConnector:
         self.is_streaming = False
         self.stream_thread = None
         self.interval = config.SIMULATION_STREAM_INTERVAL_SECONDS
+        self.seen_post_hashes = set()
+        self._cached_live_posts = []
 
     def start_stream(self, interval=None):
         """Starts real-time simulated stream thread."""
@@ -188,15 +194,175 @@ class SocialMediaConnector:
         self.is_streaming = False
         print("[SOCIAL INGESTION] Live social media stream paused.")
 
+    def fetch_live_imd_social_posts(self, limit=15):
+        """
+        Crawls and ingests up-to-the-minute real-world weather reports and #IMD updates
+        from live public Google News / IMD weather RSS syndication and Mastodon #IMD timelines.
+        """
+        new_reports = []
+        feed_url = "https://news.google.com/rss/search?q=IMD+weather+OR+alert+OR+rainfall+India&hl=en-IN&gl=IN&ceid=IN:en"
+
+        try:
+            resp = requests.get(feed_url, headers={"User-Agent": "Mozilla/5.0"}, timeout=6.0)
+            if resp.status_code == 200:
+                root = ET.fromstring(resp.content)
+                items = root.findall(".//item")
+                for item in items[:limit]:
+                    title = item.find("title").text if item.find("title") is not None else ""
+                    link = item.find("link").text if item.find("link") is not None else "https://mausam.imd.gov.in"
+                    source_elem = item.find("source")
+                    source_name = source_elem.text if source_elem is not None else "IMD Media"
+
+                    if not title:
+                        continue
+
+                    post_id = str(hash(title))
+                    if post_id in self.seen_post_hashes:
+                        continue
+                    self.seen_post_hashes.add(post_id)
+
+                    clean_source = re.sub(r'[^a-zA-Z0-9_]', '', source_name).lower()
+                    author_handle = f"@{clean_source[:18]}_imd" if clean_source else "@indiametdept"
+
+                    raw_text = title
+                    if "#IMD" not in raw_text.upper():
+                        raw_text += " #IMD #WeatherAlert"
+
+                    state, district, lat, lon = extract_location_from_text(raw_text)
+
+                    text_lower = raw_text.lower()
+                    if any(w in text_lower for w in ["extremely heavy", "cloudburst", "red alert", "cyclone", "flash flood", "warning"]):
+                        severity = "severe"
+                    elif any(w in text_lower for w in ["heavy rain", "thunderstorm", "alert", "gusty", "hail"]):
+                        severity = "moderate"
+                    else:
+                        severity = "mild"
+
+                    iso_ts = datetime.now(timezone.utc).isoformat()
+                    report_dict = {
+                        "report_uuid": f"SOC-LIVE-{uuid.uuid4().hex[:10].upper()}",
+                        "source_type": "twitter",
+                        "source_id": "social_live_imd",
+                        "source_url": link,
+                        "author_handle": author_handle,
+                        "raw_text": raw_text,
+                        "timestamp": iso_ts,
+                        "latitude": round(lat, 5),
+                        "longitude": round(lon, 5),
+                        "city": district,
+                        "state": state,
+                        "severity_level": severity,
+                        "media_urls": []
+                    }
+
+                    processed = stream_pipeline.process_report_now(report_dict)
+                    new_reports.append(processed)
+
+        except Exception as e:
+            print(f"[LIVE SOCIAL CRAWLER] RSS fetch error: {e}")
+
+        # Also query Mastodon for #IMD hashtag posts
+        try:
+            m_resp = requests.get("https://mastodon.social/api/v1/timelines/tag/IMD", timeout=4.0)
+            if m_resp.status_code == 200:
+                m_posts = m_resp.json()
+                for p in m_posts[:5]:
+                    content_html = p.get("content", "")
+                    clean_content = re.sub(r'<[^>]+>', '', content_html).strip()
+                    if not clean_content:
+                        continue
+                    post_id = str(p.get("id"))
+                    if post_id in self.seen_post_hashes:
+                        continue
+                    self.seen_post_hashes.add(post_id)
+
+                    account = p.get("account", {})
+                    author_handle = f"@{account.get('username', 'citizen_reporter')}"
+                    state, district, lat, lon = extract_location_from_text(clean_content)
+
+                    report_dict = {
+                        "report_uuid": f"SOC-MASTO-{uuid.uuid4().hex[:10].upper()}",
+                        "source_type": "mastodon",
+                        "source_id": "social_live_imd",
+                        "source_url": p.get("url", "https://mastodon.social"),
+                        "author_handle": author_handle,
+                        "raw_text": clean_content if "#IMD" in clean_content.upper() else clean_content + " #IMD",
+                        "timestamp": p.get("created_at", datetime.now(timezone.utc).isoformat()),
+                        "latitude": round(lat, 5),
+                        "longitude": round(lon, 5),
+                        "city": district,
+                        "state": state,
+                        "severity_level": "moderate",
+                        "media_urls": []
+                    }
+                    processed = stream_pipeline.process_report_now(report_dict)
+                    new_reports.append(processed)
+        except Exception as e:
+            print(f"[LIVE SOCIAL CRAWLER] Mastodon error: {e}")
+
+        if new_reports:
+            self._cached_live_posts.extend(new_reports)
+
+        print(f"[LIVE SOCIAL CRAWLER] Successfully ingested {len(new_reports)} live #IMD social reports.")
+        return new_reports
+
+    def ingest_custom_social_post(self, raw_text, author_handle=None, source_url=None, platform="twitter", media_urls=None):
+        """
+        Ingests and immediately analyzes an arbitrary user-supplied live tweet or social media post.
+        """
+        raw_text = (raw_text or "").strip()
+        if not raw_text:
+            raise ValueError("Social media post text cannot be empty.")
+
+        if not author_handle or not author_handle.strip():
+            author_handle = "@imd_crowd_intel"
+        elif not author_handle.startswith("@"):
+            author_handle = f"@{author_handle}"
+
+        if "#IMD" not in raw_text.upper():
+            raw_text += " #IMD"
+
+        state, district, lat, lon = extract_location_from_text(raw_text)
+
+        text_lower = raw_text.lower()
+        if any(w in text_lower for w in ["extremely heavy", "cloudburst", "red alert", "cyclone", "flash flood", "warning"]):
+            severity = "severe"
+        elif any(w in text_lower for w in ["heavy rain", "thunderstorm", "alert", "gusty", "hail"]):
+            severity = "moderate"
+        else:
+            severity = "mild"
+
+        report_dict = {
+            "report_uuid": f"SOC-USER-{uuid.uuid4().hex[:10].upper()}",
+            "source_type": platform or "twitter",
+            "source_id": "social_user_intake",
+            "source_url": source_url or f"https://x.com/{author_handle.lstrip('@')}/status/live",
+            "author_handle": author_handle,
+            "raw_text": raw_text,
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "latitude": round(lat, 5),
+            "longitude": round(lon, 5),
+            "city": district,
+            "state": state,
+            "severity_level": severity,
+            "media_urls": media_urls or []
+        }
+
+        # Enrich synchronously and return report with full ML predictions
+        return stream_pipeline.process_report_now(report_dict)
+
     def emit_single_report(self):
-        """Picks a template and injects a single realistic report into the queue."""
+        """Picks a live post or curated scenario report and enqueues it."""
+        # Check if we have unconsumed live posts in memory buffer
+        if self._cached_live_posts:
+            return self._cached_live_posts.pop(0)
+
         template = random.choice(SAMPLE_STREAM_POOL)
         city_name = template["city"]
         city_meta = config.MAJOR_INDIAN_CITIES.get(city_name, {
             "lat": 28.6139, "lon": 77.2090, "state": template["state"]
         })
 
-        # Add small spatial perturbation (within ~3-5km)
         lat = city_meta["lat"] + template.get("lat_offset", 0.0) + (random.uniform(-0.02, 0.02))
         lon = city_meta["lon"] + template.get("lon_offset", 0.0) + (random.uniform(-0.02, 0.02))
 
@@ -220,9 +386,14 @@ class SocialMediaConnector:
         return report_dict
 
     def _stream_loop(self):
-        """Periodic loop pushing simulated posts."""
+        """Periodic loop pushing live and simulated posts."""
+        cycle = 0
         while self.is_streaming:
             try:
+                cycle += 1
+                # Periodically crawl real live #IMD posts every 5 cycles
+                if cycle % 5 == 0:
+                    self.fetch_live_imd_social_posts(limit=5)
                 self.emit_single_report()
             except Exception as e:
                 print(f"[SOCIAL INGESTION ERROR] {e}")
