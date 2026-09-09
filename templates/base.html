@@ -22,7 +22,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
     {% block extra_css %}{% endblock %}
 </head>
 <body class="dark-theme">
@@ -127,7 +127,7 @@
     </footer>
 
     <!-- Global App Script -->
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=2.2"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

@@ -48,12 +48,16 @@ except Exception as e:
 def index():
     """Main IMD Meteorologist Analytics Dashboard."""
     summary = get_analytics_summary()
+    initial_city = request.args.get("city", "Pune")
+    initial_weather = open_weather_connector.get_live_weather(initial_city)
     return render_template(
         "index.html",
         categories=config.WEATHER_CATEGORIES,
         cities=sorted(list(config.MAJOR_INDIAN_CITIES.keys())),
         states=sorted(list(set(c["state"] for c in config.MAJOR_INDIAN_CITIES.values()))),
-        summary=summary
+        summary=summary,
+        initial_weather=initial_weather,
+        initial_city=initial_city
     )
 
 @app.route("/report")

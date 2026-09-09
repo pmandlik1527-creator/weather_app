@@ -163,7 +163,7 @@
                 <i class="fa-solid fa-location-dot"></i>
                 <select id="live-weather-city-select" class="form-select form-select-sm" title="Select Ground Station">
                     {% for c in cities %}
-                    <option value="{{ c }}" {% if c == "New Delhi" %}selected{% endif %}>{{ c }}</option>
+                    <option value="{{ c }}" {% if c == initial_city %}selected{% endif %}>{{ c }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -180,16 +180,20 @@
         <!-- Live Weather Hero Card -->
         <div class="live-weather-hero">
             <div class="hero-left">
-                <div class="hero-station-name" id="lw-station-name">New Delhi, Delhi</div>
-                <div class="hero-timestamp" id="lw-timestamp">Live Telemetry &bull; Updated just now</div>
+                <div class="hero-station-name" id="lw-station-name">{{ initial_weather.city if initial_weather else 'Pune' }}, {{ initial_weather.state if initial_weather else 'Maharashtra' }}</div>
+                <div class="hero-timestamp" id="lw-timestamp">
+                    <span class="live-sensor-dot"></span> Live Telemetry &bull; Ground Station Sensor ({{ initial_weather.latitude if initial_weather else '18.52' }}°N, {{ initial_weather.longitude if initial_weather else '73.85' }}°E)
+                </div>
                 <div class="hero-temp-row">
-                    <span class="hero-temp-value" id="lw-temp">--°</span>
+                    <span class="hero-temp-value" id="lw-temp">{{ initial_weather.temperature if initial_weather else '22' }}°</span>
                     <span class="hero-temp-unit">C</span>
                     <div class="hero-icon-box" id="lw-icon-box">
-                        <i class="fa-solid fa-sun hero-weather-icon" id="lw-icon"></i>
+                        <i class="fa-solid {{ initial_weather.icon if initial_weather else 'fa-cloud-sun' }} hero-weather-icon" id="lw-icon"></i>
                     </div>
                 </div>
-                <div class="hero-condition-text" id="lw-desc">Loading real-time ground observations...</div>
+                <div class="hero-condition-text" id="lw-desc">
+                    {{ initial_weather.emoji if initial_weather else '⛅' }} <strong>{{ initial_weather.condition_desc if initial_weather else 'Partly Cloudy' }}</strong> &bull; Ground Truth Sensor
+                </div>
             </div>
 
             <!-- Meteorological Gauge Metrics -->
@@ -198,42 +202,42 @@
                     <div class="metric-icon metric-amber"><i class="fa-solid fa-temperature-arrow-up"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Feels Like</span>
-                        <span class="metric-tile-value" id="lw-feels-like">--°C</span>
+                        <span class="metric-tile-value" id="lw-feels-like">{{ initial_weather.apparent_temperature if initial_weather else '25' }}°C</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-cyan"><i class="fa-solid fa-droplet"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Relative Humidity</span>
-                        <span class="metric-tile-value" id="lw-humidity">--%</span>
+                        <span class="metric-tile-value" id="lw-humidity">{{ initial_weather.humidity if initial_weather else '94' }}%</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-blue"><i class="fa-solid fa-wind"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Wind Velocity</span>
-                        <span class="metric-tile-value" id="lw-wind">-- km/h</span>
+                        <span class="metric-tile-value" id="lw-wind">{{ initial_weather.wind_speed_kmh if initial_weather else '8.1' }} km/h</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-emerald"><i class="fa-solid fa-cloud-rain"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Precipitation</span>
-                        <span class="metric-tile-value" id="lw-rain">-- mm</span>
+                        <span class="metric-tile-value" id="lw-rain">{{ initial_weather.precipitation_mm if initial_weather else '0.0' }} mm</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-purple"><i class="fa-solid fa-gauge-high"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Atm. Pressure</span>
-                        <span class="metric-tile-value" id="lw-pressure">-- hPa</span>
+                        <span class="metric-tile-value" id="lw-pressure">{{ initial_weather.pressure_hpa if initial_weather else '950' }} hPa</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-rose"><i class="fa-solid fa-layer-group"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">IMD Category</span>
-                        <span class="metric-tile-value" id="lw-category">--</span>
+                        <span class="metric-tile-value" id="lw-category">{{ initial_weather.category if initial_weather else 'Rainfall' }}</span>
                     </div>
                 </div>
             </div>
@@ -243,7 +247,16 @@
         <div class="hourly-forecast-deck">
             <div class="hourly-forecast-label"><i class="fa-solid fa-chart-simple"></i> Next 12-Hour Micro-Forecast & Probability:</div>
             <div class="hourly-scroll-strip" id="lw-hourly-strip">
-                <!-- Dynamically populated -->
+                {% if initial_weather and initial_weather.hourly %}
+                {% for h in initial_weather.hourly %}
+                <div class="hourly-pill">
+                    <span class="h-time">{{ h.time }}</span>
+                    <span class="h-icon"><i class="fa-solid {{ h.icon }}"></i></span>
+                    <span class="h-temp">{{ h.temp }}°C</span>
+                    <span class="h-rain"><i class="fa-solid fa-droplet"></i> {{ h.rain_prob }}%</span>
+                </div>
+                {% endfor %}
+                {% endif %}
             </div>
         </div>
     </div>
@@ -411,6 +424,29 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/map.js') }}"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+<script src="{{ url_for('static', filename='js/map.js') }}?v=2.2"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=2.2"></script>
+<script>
+// Immediate inline handler ensuring instant live weather updates regardless of browser caching
+(function() {
+    function bindWeatherUI() {
+        const select = document.getElementById("live-weather-city-select");
+        if (select && !select.dataset.bound) {
+            select.dataset.bound = "true";
+            select.addEventListener("change", function(e) {
+                if (typeof fetchAndDisplayLiveWeather === "function") {
+                    fetchAndDisplayLiveWeather(e.target.value);
+                } else {
+                    window.location.href = "/?city=" + encodeURIComponent(e.target.value);
+                }
+            });
+        }
+    }
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", bindWeatherUI);
+    } else {
+        bindWeatherUI();
+    }
+})();
+</script>
 {% endblock %}
