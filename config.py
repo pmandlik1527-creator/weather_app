@@ -83,6 +83,18 @@ MAJOR_INDIAN_CITIES = {
     "Ranchi": {"lat": 23.3441, "lon": 85.3096, "state": "Jharkhand", "zone": "East"},
     "Chandigarh": {"lat": 30.7333, "lon": 76.7794, "state": "Punjab", "zone": "North"},
     "Visakhapatnam": {"lat": 17.6868, "lon": 83.2185, "state": "Andhra Pradesh", "zone": "South"},
+    "Pune": {"lat": 18.5204, "lon": 73.8567, "state": "Maharashtra", "zone": "West"},
+    "Nagpur": {"lat": 21.1458, "lon": 79.0882, "state": "Maharashtra", "zone": "Central"},
+    "Surat": {"lat": 21.1702, "lon": 72.8311, "state": "Gujarat", "zone": "West"},
+    "Indore": {"lat": 22.7196, "lon": 75.8577, "state": "Madhya Pradesh", "zone": "Central"},
+    "Amritsar": {"lat": 31.6340, "lon": 74.8723, "state": "Punjab", "zone": "North"},
+    "Varanasi": {"lat": 25.3176, "lon": 82.9739, "state": "Uttar Pradesh", "zone": "North"},
+    "Thiruvananthapuram": {"lat": 8.5241, "lon": 76.9366, "state": "Kerala", "zone": "South"},
+    "Coimbatore": {"lat": 11.0168, "lon": 76.9558, "state": "Tamil Nadu", "zone": "South"},
+    "Panaji": {"lat": 15.4909, "lon": 73.8278, "state": "Goa", "zone": "West"},
+    "Leh": {"lat": 34.1526, "lon": 77.5771, "state": "Ladakh", "zone": "North"},
+    "Raipur": {"lat": 21.2514, "lon": 81.6296, "state": "Chhattisgarh", "zone": "Central"},
+    "Shillong": {"lat": 25.5788, "lon": 91.8933, "state": "Meghalaya", "zone": "Northeast"}
 }
 
 # Regional Climatic Plausibility Matrix (States allowed for specific extreme phenomena)

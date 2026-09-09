@@ -205,6 +205,38 @@ def api_sync_meteo():
     return jsonify({"success": True, "synced_stations": count})
 
 # ==========================================
+# Real-Time Live Meteorological Endpoints
+# ==========================================
+
+@app.route("/api/weather/live", methods=["GET"])
+def api_live_weather():
+    """Returns real-time ground-truth weather observations and 24h hourly forecast."""
+    city = request.args.get("city")
+    lat_val = request.args.get("lat")
+    lon_val = request.args.get("lon")
+
+    lat = float(lat_val) if lat_val else None
+    lon = float(lon_val) if lon_val else None
+
+    data = open_weather_connector.get_live_weather(city_name=city, lat=lat, lon=lon)
+    if not data:
+        return jsonify({"error": "Unable to fetch live weather telemetry."}), 502
+    return jsonify({"success": True, "data": data})
+
+@app.route("/api/weather/ticker", methods=["GET"])
+def api_weather_ticker():
+    """Returns live conditions across key Indian hub cities for the top ticker strip."""
+    ticker_data = open_weather_connector.get_live_ticker_feed()
+    return jsonify({"success": True, "ticker": ticker_data})
+
+@app.route("/api/weather/stations", methods=["GET"])
+def api_weather_stations():
+    """Returns real-time observations for all Indian stations for map overlay."""
+    stations = open_weather_connector.get_all_live_stations()
+    return jsonify({"success": True, "stations": stations})
+
+
+# ==========================================
 # Admin & Moderation Controls
 # ==========================================
 

@@ -87,6 +87,23 @@
         </div>
     </header>
 
+    <!-- National Live Weather Meteorological Ticker -->
+    <div class="live-weather-ticker-wrap">
+        <div class="ticker-badge">
+            <span class="ticker-pulse-dot"></span>
+            <i class="fa-solid fa-tower-broadcast"></i>
+            <span>LIVE WEATHER SENSORS</span>
+        </div>
+        <div class="ticker-viewport">
+            <div class="ticker-track" id="live-weather-ticker-track">
+                <span class="ticker-loading"><i class="fa-solid fa-spinner fa-spin"></i> Polling live ground stations across Indian nodes...</span>
+            </div>
+        </div>
+        <button class="ticker-sync-btn" id="btn-ticker-refresh" title="Refresh Live Weather Telemetry" onclick="if(window.refreshLiveTicker) window.refreshLiveTicker(true)">
+            <i class="fa-solid fa-arrows-rotate"></i>
+        </button>
+    </div>
+
     <!-- Main Content Area -->
     <main class="main-wrapper">
         {% block content %}{% endblock %}

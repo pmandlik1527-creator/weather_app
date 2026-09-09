@@ -9,6 +9,8 @@ let labelsTileLayer = null;
 let markersLayer;
 let heatmapLayer;
 let isHeatmapActive = false;
+let liveStationsLayer = null;
+let isLiveStationsActive = false;
 let userRadiusCircle = null;
 let currentReports = [];
 let currentClusters = [];
@@ -67,6 +69,8 @@ document.addEventListener("DOMContentLoaded", () => {
     initMap();
     setupFilters();
     setupStreamControls();
+    initLiveWeatherCard();
+    initLiveStationsLayer();
     loadDashboardData();
 
     // Listen for theme change events
@@ -595,3 +599,224 @@ document.addEventListener("click", (e) => {
         closeInsatModal();
     }
 });
+
+// ====================================================================
+// Real-Time Live Meteorological Ground Station Controller
+// ====================================================================
+
+async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null) {
+    const displayEl = document.getElementById("live-weather-display");
+    if (!displayEl) return;
+
+    try {
+        let url = "/api/weather/live?";
+        if (city) {
+            url += `city=${encodeURIComponent(city)}`;
+        } else if (lat !== null && lon !== null) {
+            url += `lat=${lat}&lon=${lon}`;
+        } else {
+            url += "city=New%20Delhi";
+        }
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("Station offline or network error");
+        const json = await res.json();
+        const data = json.data;
+        if (!data) return;
+
+        // Populate Hero details
+        const stationEl = document.getElementById("lw-station-name");
+        const timeEl = document.getElementById("lw-timestamp");
+        const tempEl = document.getElementById("lw-temp");
+        const descEl = document.getElementById("lw-desc");
+        const iconEl = document.getElementById("lw-icon");
+        const feelsEl = document.getElementById("lw-feels-like");
+        const humidEl = document.getElementById("lw-humidity");
+        const windEl = document.getElementById("lw-wind");
+        const rainEl = document.getElementById("lw-rain");
+        const pressEl = document.getElementById("lw-pressure");
+        const catEl = document.getElementById("lw-category");
+        const hourlyStrip = document.getElementById("lw-hourly-strip");
+
+        if (stationEl) stationEl.textContent = `${data.city}, ${data.state}`;
+        if (timeEl) timeEl.innerHTML = `<span class="live-sensor-dot"></span> Live Telemetry &bull; Ground Station Sensor (${data.latitude.toFixed(2)}°N, ${data.longitude.toFixed(2)}°E)`;
+        if (tempEl) tempEl.textContent = `${data.temperature}°`;
+        if (descEl) descEl.innerHTML = `${data.emoji} <strong>${data.condition_desc}</strong> &bull; Ground Truth Sensor`;
+        if (iconEl) iconEl.className = `fa-solid ${data.icon} hero-weather-icon`;
+        if (feelsEl) feelsEl.textContent = `${data.apparent_temperature}°C`;
+        if (humidEl) humidEl.textContent = `${data.humidity}%`;
+        if (windEl) windEl.textContent = `${data.wind_speed_kmh} km/h`;
+        if (rainEl) rainEl.textContent = `${data.precipitation_mm} mm`;
+        if (pressEl) pressEl.textContent = `${data.pressure_hpa} hPa`;
+        if (catEl) catEl.textContent = data.category;
+
+        // Populate Hourly Strip
+        if (hourlyStrip && data.hourly && data.hourly.length > 0) {
+            hourlyStrip.innerHTML = data.hourly.map(h => `
+                <div class="hourly-pill">
+                    <span class="h-time">${h.time}</span>
+                    <span class="h-icon"><i class="fa-solid ${h.icon}"></i></span>
+                    <span class="h-temp">${h.temp}°C</span>
+                    <span class="h-rain"><i class="fa-solid fa-droplet"></i> ${h.rain_prob}%</span>
+                </div>
+            `).join("");
+        }
+    } catch (err) {
+        console.error("[LIVE WEATHER] Fetch error:", err);
+    }
+}
+
+function initLiveWeatherCard() {
+    const select = document.getElementById("live-weather-city-select");
+    const detectBtn = document.getElementById("btn-detect-my-weather");
+    const refreshBtn = document.getElementById("btn-refresh-live-weather");
+
+    if (select) {
+        select.addEventListener("change", (e) => {
+            fetchAndDisplayLiveWeather(e.target.value);
+        });
+    }
+
+    if (detectBtn) {
+        detectBtn.addEventListener("click", () => {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+            detectBtn.disabled = true;
+            detectBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Detecting...`;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    fetchAndDisplayLiveWeather(null, lat, lon);
+                    detectBtn.disabled = false;
+                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> My Live Weather`;
+                    if (map) {
+                        map.flyTo([lat, lon], 9, { duration: 1.2 });
+                    }
+                },
+                (err) => {
+                    alert("Could not acquire GPS position: " + err.message);
+                    detectBtn.disabled = false;
+                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> My Live Weather`;
+                }
+            );
+        });
+    }
+
+    if (refreshBtn) {
+        refreshBtn.addEventListener("click", () => {
+            const currentCity = select ? select.value : "New Delhi";
+            refreshBtn.disabled = true;
+            refreshBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
+            fetchAndDisplayLiveWeather(currentCity).finally(() => {
+                refreshBtn.disabled = false;
+                refreshBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i>`;
+            });
+        });
+    }
+
+    // Load initial city weather (New Delhi default)
+    fetchAndDisplayLiveWeather("New Delhi");
+}
+
+// ====================================================================
+// Map Live Ground Weather Stations Layer
+// ====================================================================
+
+function initLiveStationsLayer() {
+    if (!map) return;
+    liveStationsLayer = L.layerGroup();
+
+    const toggleBtn = document.getElementById("btn-toggle-live-stations");
+    if (toggleBtn) {
+        toggleBtn.addEventListener("click", () => {
+            toggleLiveStations();
+        });
+    }
+}
+
+async function toggleLiveStations() {
+    isLiveStationsActive = !isLiveStationsActive;
+    const btn = document.getElementById("btn-toggle-live-stations");
+
+    if (isLiveStationsActive) {
+        if (btn) {
+            btn.classList.add("btn-primary");
+            btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Loading Stations...`;
+        }
+
+        try {
+            const res = await fetch("/api/weather/stations");
+            if (!res.ok) throw new Error("Failed to load stations");
+            const data = await res.json();
+            const stations = data.stations || [];
+
+            liveStationsLayer.clearLayers();
+
+            stations.forEach(st => {
+                if (st.lat && st.lon) {
+                    // Custom HTML Temperature Badge
+                    const badgeHtml = `
+                        <div class="station-map-badge">
+                            <span class="st-emoji">${st.emoji}</span>
+                            <span class="st-temp">${st.temp}°</span>
+                            <span class="st-name">${st.city}</span>
+                        </div>
+                    `;
+
+                    const customIcon = L.divIcon({
+                        className: "station-div-icon",
+                        html: badgeHtml,
+                        iconSize: [88, 30],
+                        iconAnchor: [44, 15]
+                    });
+
+                    const marker = L.marker([st.lat, st.lon], { icon: customIcon });
+
+                    const popupContent = `
+                        <div class="popup-inner">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                <span class="badge-station-live"><i class="fa-solid fa-tower-broadcast"></i> LIVE IMD SENSOR</span>
+                                <span style="font-weight:700;font-size:1.1rem;color:#38bdf8;">${st.temp}°C</span>
+                            </div>
+                            <div class="popup-title">${st.city}, ${st.state}</div>
+                            <div style="font-size:0.88rem;color:#cbd5e1;margin-bottom:8px;">${st.emoji} ${st.desc} (Feels like ${st.feels_like}°C)</div>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:0.8rem;background:rgba(255,255,255,0.04);padding:8px;border-radius:6px;">
+                                <div><i class="fa-solid fa-droplet text-cyan"></i> Humidity: <strong>${st.humidity}%</strong></div>
+                                <div><i class="fa-solid fa-wind text-blue"></i> Wind: <strong>${st.wind} km/h</strong></div>
+                                <div><i class="fa-solid fa-cloud-rain text-emerald"></i> Rain: <strong>${st.rain} mm</strong></div>
+                                <div><i class="fa-solid fa-layer-group text-amber"></i> Category: <strong>${st.category}</strong></div>
+                            </div>
+                            <button class="btn btn-secondary btn-sm" style="width:100%;margin-top:8px;" onclick="selectCityForWeather('${st.city}')">
+                                <i class="fa-solid fa-chart-line"></i> Inspect Full Forecast
+                            </button>
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent, { className: "custom-map-popup", maxWidth: 290 });
+                    liveStationsLayer.addLayer(marker);
+                }
+            });
+
+            liveStationsLayer.addTo(map);
+            if (btn) {
+                btn.innerHTML = `<i class="fa-solid fa-temperature-three-quarters"></i> Live Stations (ON)`;
+            }
+        } catch (err) {
+            console.error("[LIVE STATIONS] Error loading stations layer:", err);
+            if (btn) {
+                btn.classList.remove("btn-primary");
+                btn.innerHTML = `<i class="fa-solid fa-temperature-three-quarters"></i> Live Stations`;
+            }
+            isLiveStationsActive = false;
+        }
+    } else {
+        if (liveStationsLayer) map.removeLayer(liveStationsLayer);
+        if (btn) {
+            btn.classList.remove("btn-primary");
+            btn.innerHTML = `<i class="fa-solid fa-temperature-three-quarters"></i> Live Stations`;
+        }
+    }
+}

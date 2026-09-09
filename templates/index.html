@@ -150,6 +150,105 @@
     </button>
 </div>
 
+<!-- Live Weather Observation & Ground Station Deck -->
+<section class="live-weather-panel-card">
+    <div class="live-weather-header">
+        <div class="live-weather-title-group">
+            <span class="live-sensor-dot"></span>
+            <span class="live-sensor-title"><i class="fa-solid fa-cloud-bolt"></i> Real-Time Meteorological Station & Sensor Feed</span>
+            <span class="badge-station-live">OPEN-METEO / IMD RADAR</span>
+        </div>
+        <div class="live-weather-controls">
+            <div class="live-city-select-wrap">
+                <i class="fa-solid fa-location-dot"></i>
+                <select id="live-weather-city-select" class="form-select form-select-sm" title="Select Ground Station">
+                    {% for c in cities %}
+                    <option value="{{ c }}" {% if c == "New Delhi" %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button id="btn-detect-my-weather" class="btn btn-primary btn-sm" title="Get live weather at my GPS coordinates">
+                <i class="fa-solid fa-location-crosshairs"></i> My Live Weather
+            </button>
+            <button id="btn-refresh-live-weather" class="btn btn-secondary btn-sm" title="Refresh Live Station Readings">
+                <i class="fa-solid fa-arrows-rotate"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="live-weather-body" id="live-weather-display">
+        <!-- Live Weather Hero Card -->
+        <div class="live-weather-hero">
+            <div class="hero-left">
+                <div class="hero-station-name" id="lw-station-name">New Delhi, Delhi</div>
+                <div class="hero-timestamp" id="lw-timestamp">Live Telemetry &bull; Updated just now</div>
+                <div class="hero-temp-row">
+                    <span class="hero-temp-value" id="lw-temp">--°</span>
+                    <span class="hero-temp-unit">C</span>
+                    <div class="hero-icon-box" id="lw-icon-box">
+                        <i class="fa-solid fa-sun hero-weather-icon" id="lw-icon"></i>
+                    </div>
+                </div>
+                <div class="hero-condition-text" id="lw-desc">Loading real-time ground observations...</div>
+            </div>
+
+            <!-- Meteorological Gauge Metrics -->
+            <div class="hero-metrics-grid">
+                <div class="metric-tile">
+                    <div class="metric-icon metric-amber"><i class="fa-solid fa-temperature-arrow-up"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-tile-label">Feels Like</span>
+                        <span class="metric-tile-value" id="lw-feels-like">--°C</span>
+                    </div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-icon metric-cyan"><i class="fa-solid fa-droplet"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-tile-label">Relative Humidity</span>
+                        <span class="metric-tile-value" id="lw-humidity">--%</span>
+                    </div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-icon metric-blue"><i class="fa-solid fa-wind"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-tile-label">Wind Velocity</span>
+                        <span class="metric-tile-value" id="lw-wind">-- km/h</span>
+                    </div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-icon metric-emerald"><i class="fa-solid fa-cloud-rain"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-tile-label">Precipitation</span>
+                        <span class="metric-tile-value" id="lw-rain">-- mm</span>
+                    </div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-icon metric-purple"><i class="fa-solid fa-gauge-high"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-tile-label">Atm. Pressure</span>
+                        <span class="metric-tile-value" id="lw-pressure">-- hPa</span>
+                    </div>
+                </div>
+                <div class="metric-tile">
+                    <div class="metric-icon metric-rose"><i class="fa-solid fa-layer-group"></i></div>
+                    <div class="metric-info">
+                        <span class="metric-tile-label">IMD Category</span>
+                        <span class="metric-tile-value" id="lw-category">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Hourly 12-Hour Micro-Forecast Strip -->
+        <div class="hourly-forecast-deck">
+            <div class="hourly-forecast-label"><i class="fa-solid fa-chart-simple"></i> Next 12-Hour Micro-Forecast & Probability:</div>
+            <div class="hourly-scroll-strip" id="lw-hourly-strip">
+                <!-- Dynamically populated -->
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Main Operational Layout: Interactive Map + Live Stream Feed -->
 <div class="dashboard-grid">
     <!-- Left: Geospatial Map View -->
@@ -173,6 +272,9 @@
                         <option value="osm">🗺️ OpenStreetMap Standard</option>
                     </select>
                 </div>
+                <button id="btn-toggle-live-stations" class="btn btn-secondary btn-sm" title="Toggle Live Ground Weather Station Pins Across India">
+                    <i class="fa-solid fa-temperature-three-quarters"></i> Live Stations
+                </button>
                 <button id="btn-open-insat-photo" class="btn btn-secondary btn-sm" title="View High-Resolution INSAT-3DR Weather Satellite Photography" onclick="openInsatModal()">
                     <i class="fa-solid fa-camera"></i> Satellite Photo
                 </button>

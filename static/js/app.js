@@ -21,6 +21,57 @@ function updateClock() {
 setInterval(updateClock, 1000);
 updateClock();
 
+// ==========================================
+// National Live Weather Ticker Strip Controller
+// ==========================================
+async function refreshLiveTicker(force = false) {
+    const trackEl = document.getElementById("live-weather-ticker-track");
+    if (!trackEl) return;
+
+    try {
+        const res = await fetch("/api/weather/ticker");
+        if (!res.ok) return;
+        const data = await res.json();
+        const items = data.ticker || [];
+
+        if (items.length === 0) return;
+
+        // Build continuous HTML string
+        const html = items.map(item => `
+            <div class="ticker-city-chip" onclick="selectCityForWeather('${item.city}')" title="Click to inspect ${item.city} live telemetry">
+                <span class="t-city"><i class="fa-solid fa-location-dot"></i> ${item.city}</span>
+                <span class="t-temp">${item.temp}°C</span>
+                <span class="t-emoji">${item.emoji}</span>
+                <span class="t-desc">${item.desc}</span>
+                <span class="t-meta"><i class="fa-solid fa-droplet"></i> ${item.humidity}%</span>
+                <span class="t-meta"><i class="fa-solid fa-wind"></i> ${item.wind}km/h</span>
+            </div>
+        `).join("");
+
+        // Double the items for seamless infinite horizontal loop
+        trackEl.innerHTML = html + html;
+    } catch (err) {
+        console.warn("[TICKER] Error loading live weather:", err);
+    }
+}
+
+// Expose globally
+window.refreshLiveTicker = refreshLiveTicker;
+window.selectCityForWeather = function(cityName) {
+    const citySelect = document.getElementById("live-weather-city-select");
+    if (citySelect) {
+        citySelect.value = cityName;
+        citySelect.dispatchEvent(new Event("change"));
+        citySelect.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+};
+
+// Initial ticker load & periodic 3-min update
+document.addEventListener("DOMContentLoaded", () => {
+    refreshLiveTicker();
+    setInterval(() => refreshLiveTicker(), 180000);
+});
+
 // Theme Controller (Light / Dark Mode)
 function initTheme() {
     const savedTheme = localStorage.getItem("imd_theme");
