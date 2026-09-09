@@ -9,14 +9,16 @@ from database.db import init_db
 from database.repository import (
     insert_report,
     seed_default_sources_if_empty,
+    seed_default_users,
     get_report_by_id
 )
 from ml.deduplicator import deduplicator
 
 def seed_database():
-    """Initializes schema, sources, and seed reports."""
+    """Initializes schema, sources, users, and seed reports."""
     init_db()
     seed_default_sources_if_empty()
+    seed_default_users()
 
     seed_file = Path(__file__).parent / "data" / "seed_data.json"
     if not seed_file.exists():

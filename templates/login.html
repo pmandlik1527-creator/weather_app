@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Authentication Portal | National Weather Big Data Analytics Platform (MoES/IMD){% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div class="auth-card">
+        <!-- Official Emblem & Header -->
+        <div class="auth-header">
+            <div class="auth-emblem">
+                <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <h2 class="auth-title">NWBDAP Secure Portal</h2>
+            <p class="auth-subtitle">Ministry of Earth Sciences &bull; India Meteorological Department</p>
+        </div>
+
+        <!-- Auth Tabs: Sign In vs Citizen Register -->
+        <div class="auth-tabs">
+            <button type="button" class="auth-tab-btn {% if tab != 'register' %}active{% endif %}" onclick="switchAuthTab('login')">
+                <i class="fa-solid fa-right-to-bracket"></i> Sign In
+            </button>
+            <button type="button" class="auth-tab-btn {% if tab == 'register' %}active{% endif %}" onclick="switchAuthTab('register')">
+                <i class="fa-solid fa-user-plus"></i> Citizen Register
+            </button>
+        </div>
+
+        <!-- Error/Alert Banner -->
+        {% if error %}
+        <div class="auth-alert auth-alert-error">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>{{ error }}</span>
+        </div>
+        {% endif %}
+
+        <!-- Tab 1: Sign In Form -->
+        <form id="form-login" class="auth-form {% if tab == 'register' %}d-none{% endif %}" method="POST" action="{{ url_for('login_view', next=request.args.get('next')) }}">
+            <div class="auth-field">
+                <label for="login-username"><i class="fa-solid fa-user"></i> Username or Email:</label>
+                <input type="text" id="login-username" name="username" class="form-input" placeholder="e.g. admin or officer@imd.gov.in" required autofocus>
+            </div>
+
+            <div class="auth-field">
+                <label for="login-password"><i class="fa-solid fa-lock"></i> Password:</label>
+                <input type="password" id="login-password" name="password" class="form-input" placeholder="Enter password" required>
+            </div>
+
+            <div class="auth-remember-row">
+                <label class="remember-label">
+                    <input type="checkbox" name="remember" value="1" checked> Remember this device
+                </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-auth-submit">
+                <i class="fa-solid fa-shield-check"></i> Sign In to Platform
+            </button>
+
+            <!-- Quick Demo Credentials Fill -->
+            <div class="demo-creds-box">
+                <div class="demo-creds-title"><i class="fa-solid fa-key"></i> Quick Demo Login (One-Click):</div>
+                <div class="demo-creds-actions">
+                    <button type="button" class="btn-demo-chip" onclick="fillDemoCreds('admin', 'Admin@123')">
+                        <span class="chip-role">IMD Duty Officer (Admin)</span>
+                        <span class="chip-val">admin / Admin@123</span>
+                    </button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Tab 2: Citizen Registration Form -->
+        <form id="form-register" class="auth-form {% if tab != 'register' %}d-none{% endif %}" method="POST" action="{{ url_for('register_view', next=request.args.get('next')) }}">
+            <div class="auth-field">
+                <label for="reg-fullname"><i class="fa-solid fa-address-card"></i> Full Name:</label>
+                <input type="text" id="reg-fullname" name="full_name" class="form-input" placeholder="e.g. Rajesh Sharma" required>
+            </div>
+
+            <div class="auth-field">
+                <label for="reg-username"><i class="fa-solid fa-at"></i> Desired Username:</label>
+                <input type="text" id="reg-username" name="username" class="form-input" placeholder="e.g. rajesh_weather" required>
+            </div>
+
+            <div class="auth-field">
+                <label for="reg-email"><i class="fa-solid fa-envelope"></i> Email Address:</label>
+                <input type="email" id="reg-email" name="email" class="form-input" placeholder="e.g. rajesh@example.com" required>
+            </div>
+
+            <div class="auth-field-row">
+                <div class="auth-field">
+                    <label for="reg-password"><i class="fa-solid fa-lock"></i> Password:</label>
+                    <input type="password" id="reg-password" name="password" class="form-input" placeholder="Min. 6 chars" required minlength="6">
+                </div>
+                <div class="auth-field">
+                    <label for="reg-confirm"><i class="fa-solid fa-check-double"></i> Confirm Password:</label>
+                    <input type="password" id="reg-confirm" name="confirm_password" class="form-input" placeholder="Repeat password" required minlength="6">
+                </div>
+            </div>
+
+            <div class="auth-field">
+                <label for="reg-designation"><i class="fa-solid fa-building-user"></i> Affiliation / City (Optional):</label>
+                <input type="text" id="reg-designation" name="designation" class="form-input" placeholder="e.g. Citizen Meteorologist, Pune">
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-auth-submit">
+                <i class="fa-solid fa-user-plus"></i> Create Citizen Account
+            </button>
+        </form>
+
+        <div class="auth-footer-notice">
+            <i class="fa-solid fa-building-columns"></i>
+            <span>Government of India &bull; National Meteorological Big Data Analytics Platform</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function switchAuthTab(tab) {
+    const loginForm = document.getElementById("form-login");
+    const regForm = document.getElementById("form-register");
+    const buttons = document.querySelectorAll(".auth-tab-btn");
+
+    if (tab === "login") {
+        loginForm.classList.remove("d-none");
+        regForm.classList.add("d-none");
+        buttons[0].classList.add("active");
+        buttons[1].classList.remove("active");
+    } else {
+        loginForm.classList.add("d-none");
+        regForm.classList.remove("d-none");
+        buttons[0].classList.remove("active");
+        buttons[1].classList.add("active");
+    }
+}
+
+function fillDemoCreds(u, p) {
+    switchAuthTab('login');
+    document.getElementById("login-username").value = u;
+    document.getElementById("login-password").value = p;
+}
+</script>
+{% endblock %}

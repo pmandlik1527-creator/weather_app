@@ -15,11 +15,62 @@ class TestAPI(unittest.TestCase):
         init_db()
 
     def test_pages_render(self):
-        """Verify web pages return HTTP 200 OK."""
-        pages = ["/", "/report", "/admin", "/analytics"]
+        """Verify public web pages return HTTP 200 OK."""
+        pages = ["/", "/report", "/analytics", "/login"]
         for p in pages:
             res = self.app.get(p)
             self.assertEqual(res.status_code, 200, f"Page {p} failed to render.")
+
+    def test_admin_redirects_unauthenticated(self):
+        """Verify /admin redirects to /login when unauthenticated."""
+        res = self.app.get("/admin", follow_redirects=False)
+        self.assertEqual(res.status_code, 302)
+        self.assertIn("/login", res.headers.get("Location", ""))
+
+    def test_login_flow(self):
+        """Verify user login, session access, and logout."""
+        # Test valid login with seeded admin credentials
+        login_res = self.app.post("/login", data={
+            "username": "admin",
+            "password": "Admin@123"
+        }, follow_redirects=True)
+        self.assertEqual(login_res.status_code, 200)
+
+        # Verify /api/auth/me returns authenticated admin
+        me_res = self.app.get("/api/auth/me")
+        self.assertEqual(me_res.status_code, 200)
+        me_data = json.loads(me_res.data)
+        self.assertTrue(me_data.get("authenticated"))
+        self.assertEqual(me_data.get("user", {}).get("username"), "admin")
+
+        # Verify admin can now access /admin
+        admin_res = self.app.get("/admin")
+        self.assertEqual(admin_res.status_code, 200)
+
+        # Test logout
+        logout_res = self.app.get("/logout", follow_redirects=True)
+        self.assertEqual(logout_res.status_code, 200)
+
+        # Verify no longer authenticated
+        me_after_logout = self.app.get("/api/auth/me")
+        me_after_data = json.loads(me_after_logout.data)
+        self.assertFalse(me_after_data.get("authenticated"))
+
+    def test_citizen_registration(self):
+        """Verify citizen registration and auto-login."""
+        reg_res = self.app.post("/register", data={
+            "username": "test_citizen_user",
+            "email": "citizen@imd.gov.in",
+            "full_name": "Citizen Reporter",
+            "password": "SecurePassword123",
+            "confirm_password": "SecurePassword123"
+        }, follow_redirects=True)
+        self.assertEqual(reg_res.status_code, 200)
+
+        me_res = self.app.get("/api/auth/me")
+        me_data = json.loads(me_res.data)
+        self.assertTrue(me_data.get("authenticated"))
+        self.assertEqual(me_data.get("user", {}).get("role"), "citizen")
 
     def test_api_reports(self):
         """Verify /api/reports endpoint returns valid JSON array."""

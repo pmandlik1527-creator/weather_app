@@ -8,8 +8,9 @@ Core Flask Application & REST API
 import io
 import csv
 import json
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, Response, send_file
+from datetime import datetime, timedelta
+from functools import wraps
+from flask import Flask, render_template, request, jsonify, Response, send_file, session, redirect, url_for, flash
 import config
 from database.db import init_db
 from database.repository import (
@@ -21,7 +22,11 @@ from database.repository import (
     get_audit_logs,
     get_sources_config,
     toggle_source_status,
-    seed_default_sources_if_empty
+    seed_default_sources_if_empty,
+    create_user,
+    get_user_by_id,
+    get_user_by_username_or_email,
+    authenticate_user
 )
 from ingestion.stream_manager import stream_pipeline
 from ingestion.social_connector import social_connector
@@ -32,6 +37,53 @@ from seed import seed_database
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
+
+# ==========================================
+# Authentication & Authorization Helpers
+# ==========================================
+
+def get_current_user():
+    """Returns the authenticated user dict or None."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return None
+    return get_user_by_id(user_id)
+
+@app.context_processor
+def inject_current_user():
+    """Makes current_user available to all Jinja2 templates."""
+    return {"current_user": get_current_user()}
+
+def login_required(f):
+    """Decorator ensuring user is authenticated."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get("user_id"):
+            if request.path.startswith("/api/"):
+                return jsonify({"error": "Authentication required", "authenticated": False}), 401
+            return redirect(url_for("login_view", next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+def role_required(allowed_roles):
+    """Decorator ensuring user has an allowed role (e.g. admin, meteorologist)."""
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            user = get_current_user()
+            if not user:
+                if request.path.startswith("/api/"):
+                    return jsonify({"error": "Authentication required", "authenticated": False}), 401
+                return redirect(url_for("login_view", next=request.url))
+            if user.get("role") not in allowed_roles:
+                if request.path.startswith("/api/"):
+                    return jsonify({"error": "Forbidden: insufficient permissions"}), 403
+                flash("Access restricted to authorized IMD personnel.", "error")
+                return redirect(url_for("index"))
+            return f(*args, **kwargs)
+        return decorated_function
+    return decorator
 
 # Ensure DB is seeded on app startup
 try:
@@ -70,7 +122,103 @@ def citizen_portal():
         states=sorted(list(set(c["state"] for c in config.MAJOR_INDIAN_CITIES.values())))
     )
 
+# ==========================================
+# Authentication & User Management Routes
+# ==========================================
+
+@app.route("/login", methods=["GET", "POST"])
+def login_view():
+    """Authentication portal for IMD Officers and Citizens."""
+    if session.get("user_id"):
+        return redirect(request.args.get("next") or url_for("index"))
+
+    error = None
+    tab = request.args.get("tab", "login")
+
+    if request.method == "POST":
+        identifier = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+        remember = bool(request.form.get("remember"))
+
+        user = authenticate_user(identifier, password)
+        if user:
+            session.permanent = remember
+            session["user_id"] = user["id"]
+            session["username"] = user["username"]
+            session["role"] = user["role"]
+            flash(f"Welcome back, {user['full_name']}!", "success")
+            next_page = request.args.get("next")
+            if next_page and not next_page.startswith("//") and not "://" in next_page:
+                return redirect(next_page)
+            if user["role"] in ("admin", "meteorologist"):
+                return redirect(url_for("admin_panel"))
+            return redirect(url_for("index"))
+        else:
+            error = "Invalid username or password. Please verify your credentials."
+
+    return render_template("login.html", error=error, tab=tab)
+
+@app.route("/register", methods=["GET", "POST"])
+def register_view():
+    """Registration portal for Citizens and Field Observers."""
+    if session.get("user_id"):
+        return redirect(url_for("index"))
+
+    error = None
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+        full_name = request.form.get("full_name", "").strip()
+        designation = request.form.get("designation", "").strip()
+
+        if password != confirm_password:
+            error = "Passwords do not match."
+        elif len(password) < 6:
+            error = "Password must be at least 6 characters long."
+        else:
+            try:
+                user = create_user(
+                    username=username,
+                    email=email,
+                    password=password,
+                    full_name=full_name,
+                    role="citizen",
+                    designation=designation
+                )
+                session["user_id"] = user["id"]
+                session["username"] = user["username"]
+                session["role"] = user["role"]
+                flash(f"Account created successfully! Welcome, {user['full_name']}.", "success")
+                next_page = request.args.get("next")
+                if next_page and not next_page.startswith("//") and not "://" in next_page:
+                    return redirect(next_page)
+                return redirect(url_for("index"))
+            except ValueError as ve:
+                error = str(ve)
+            except Exception as e:
+                error = f"Registration failed: {str(e)}"
+
+    return render_template("login.html", error=error, tab="register")
+
+@app.route("/logout")
+def logout():
+    """Terminates active user session."""
+    session.clear()
+    flash("You have been securely signed out.", "info")
+    return redirect(url_for("index"))
+
+@app.route("/api/auth/me", methods=["GET"])
+def api_auth_me():
+    """Returns profile for currently authenticated user."""
+    user = get_current_user()
+    if user:
+        return jsonify({"authenticated": True, "user": user})
+    return jsonify({"authenticated": False, "user": None})
+
 @app.route("/admin")
+@role_required(["admin", "meteorologist"])
 def admin_panel():
     """IMD Administrator & Moderation Panel."""
     sources = get_sources_config()
@@ -251,6 +399,7 @@ def api_admin_sources():
     return jsonify(sources)
 
 @app.route("/api/admin/source/toggle", methods=["POST"])
+@role_required(["admin", "meteorologist"])
 def api_toggle_source():
     """Enables or disables an ingestion source."""
     data = request.get_json(silent=True) or {}
@@ -262,12 +411,14 @@ def api_toggle_source():
     return jsonify({"success": True, "source_id": source_id, "is_active": is_active})
 
 @app.route("/api/admin/moderate", methods=["POST"])
+@role_required(["admin", "meteorologist"])
 def api_moderate_report():
     """Human-in-the-loop analyst review and override."""
     data = request.get_json(silent=True) or {}
     report_id = data.get("report_id")
     new_status = data.get("new_status")
-    operator = data.get("operator", "IMD Meteorologist")
+    user = get_current_user()
+    operator = user.get("full_name") if user else data.get("operator", "IMD Duty Officer")
     notes = data.get("notes", "")
     new_cat = data.get("new_category")
 
@@ -281,6 +432,7 @@ def api_moderate_report():
     return jsonify({"success": True, "report_id": report_id, "new_status": new_status})
 
 @app.route("/api/admin/audit-logs", methods=["GET"])
+@role_required(["admin", "meteorologist"])
 def api_audit_logs():
     """Returns moderation audit trail."""
     limit = int(request.args.get("limit", 50))
@@ -288,6 +440,7 @@ def api_audit_logs():
     return jsonify(logs)
 
 @app.route("/api/admin/retrain", methods=["POST"])
+@role_required(["admin", "meteorologist"])
 def api_retrain_feedback():
     """Incorporates analyst corrections into the active ML model."""
     res = feedback_manager.apply_pending_feedback()

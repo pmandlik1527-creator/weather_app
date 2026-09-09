@@ -113,3 +113,18 @@ CREATE INDEX IF NOT EXISTS idx_reports_is_fake ON weather_reports(is_fake);
 CREATE INDEX IF NOT EXISTS idx_reports_timestamp ON weather_reports(timestamp);
 CREATE INDEX IF NOT EXISTS idx_reports_cluster ON weather_reports(cluster_id);
 CREATE INDEX IF NOT EXISTS idx_clusters_status ON incident_clusters(status);
+
+-- User Accounts & Role-Based Access Control
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'citizen', -- 'admin', 'meteorologist', 'citizen'
+    designation TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);

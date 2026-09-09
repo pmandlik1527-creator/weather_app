@@ -6,6 +6,7 @@ Data Access Repository
 import json
 import math
 from datetime import datetime, timedelta, timezone
+from werkzeug.security import generate_password_hash, check_password_hash
 from database.db import db_cursor, get_connection
 import config
 
@@ -488,3 +489,103 @@ def seed_default_sources_if_empty():
                     VALUES (?, ?, ?, ?, ?, ?)
                 """, (s_id, name, stype, query, active, poll))
         print("[DB] Default data sources seeded.")
+
+# --- Users & Authentication ---
+
+def create_user(username, email, password, full_name, role="citizen", designation=None):
+    """Creates a new user account with hashed password."""
+    username = username.strip().lower()
+    email = email.strip().lower()
+    full_name = full_name.strip()
+    
+    if not username or not email or not password or not full_name:
+        raise ValueError("Username, email, password, and full name are required.")
+    
+    if role not in ("admin", "meteorologist", "citizen"):
+        role = "citizen"
+        
+    password_hash = generate_password_hash(password)
+    
+    with db_cursor() as cur:
+        # Check uniqueness
+        cur.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+        if cur.fetchone():
+            raise ValueError("Username or email is already registered.")
+            
+        cur.execute("""
+            INSERT INTO users (username, email, password_hash, full_name, role, designation)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (username, email, password_hash, full_name, role, designation or ""))
+        
+        user_id = cur.lastrowid
+        
+    return get_user_by_id(user_id)
+
+def get_user_by_id(user_id):
+    """Fetches user profile by ID (excluding password hash)."""
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, username, email, full_name, role, designation, created_at
+        FROM users WHERE id = ?
+    """, (user_id,))
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+def get_user_by_username_or_email(identifier):
+    """Fetches full user record including password hash by username or email."""
+    if not identifier:
+        return None
+    ident = identifier.strip().lower()
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, username, email, password_hash, full_name, role, designation, created_at
+        FROM users WHERE username = ? OR email = ?
+    """, (ident, ident))
+    row = cur.fetchone()
+    return dict(row) if row else None
+
+def authenticate_user(identifier, password):
+    """Authenticates credentials and returns user dict on success, None on failure."""
+    user = get_user_by_username_or_email(identifier)
+    if not user:
+        return None
+    if check_password_hash(user["password_hash"], password):
+        user_clean = {k: v for k, v in user.items() if k != "password_hash"}
+        return user_clean
+    return None
+
+def seed_default_users():
+    """Initializes default administrative IMD officer account if users table is empty."""
+    conn = get_connection()
+    cur = conn.cursor()
+    # Ensure users table exists in DB
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT UNIQUE NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            full_name TEXT NOT NULL,
+            role TEXT NOT NULL DEFAULT 'citizen',
+            designation TEXT,
+            created_at TEXT DEFAULT (datetime('now'))
+        )
+    """)
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
+    conn.commit()
+
+    cur.execute("SELECT COUNT(*) as count FROM users")
+    count = cur.fetchone()["count"]
+    if count == 0:
+        create_user(
+            username="admin",
+            email="admin@imd.gov.in",
+            password="Admin@123",
+            full_name="IMD Duty Officer",
+            role="admin",
+            designation="National Meteorological Control Center"
+        )
+        print("[DB] Default IMD Administrator user seeded (admin / Admin@123).")

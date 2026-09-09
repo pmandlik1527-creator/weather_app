@@ -161,3 +161,23 @@ CREATE POLICY "Allow public update on ml_feedback_log" ON ml_feedback_log FOR UP
 
 CREATE POLICY "Allow public read on system_metrics" ON system_metrics FOR SELECT USING (true);
 CREATE POLICY "Allow public insert on system_metrics" ON system_metrics FOR INSERT WITH CHECK (true);
+
+-- 7. User Accounts & Access Control Table
+CREATE TABLE IF NOT EXISTS users (
+    id BIGSERIAL PRIMARY KEY,
+    username TEXT UNIQUE NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    full_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'citizen',
+    designation TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_supabase_users_username ON users(username);
+CREATE INDEX IF NOT EXISTS idx_supabase_users_email ON users(email);
+
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow public read on users" ON users FOR SELECT USING (true);
+CREATE POLICY "Allow public insert on users" ON users FOR INSERT WITH CHECK (true);
+CREATE POLICY "Allow public update on users" ON users FOR UPDATE USING (true);
