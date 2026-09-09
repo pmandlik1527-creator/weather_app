@@ -159,16 +159,44 @@
             <span class="badge-station-live">OPEN-METEO / IMD RADAR</span>
         </div>
         <div class="live-weather-controls">
-            <div class="live-city-select-wrap">
-                <i class="fa-solid fa-location-dot"></i>
-                <select id="live-weather-city-select" class="form-select form-select-sm" title="Select Ground Station">
-                    {% for c in cities %}
-                    <option value="{{ c }}" {% if c == initial_city %}selected{% endif %}>{{ c }}</option>
+            <!-- State Selector Dropdown -->
+            <div class="live-control-group">
+                <label class="control-tiny-label"><i class="fa-solid fa-map"></i> State/UT</label>
+                <select id="live-weather-state-select" class="form-select form-select-sm state-dropdown" title="Select Indian State or UT">
+                    {% for st in all_states %}
+                    <option value="{{ st }}" {% if st == initial_state %}selected{% endif %}>{{ st }}</option>
                     {% endfor %}
                 </select>
             </div>
+
+            <!-- District Selector Dropdown -->
+            <div class="live-control-group">
+                <label class="control-tiny-label"><i class="fa-solid fa-location-dot"></i> District</label>
+                <select id="live-weather-district-select" class="form-select form-select-sm district-dropdown" title="Select District">
+                    {% for d in districts_by_state.get(initial_state, []) %}
+                    <option value="{{ d }}" {% if d == initial_district %}selected{% endif %}>{{ d }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Quick Search Input with Datalist -->
+            <div class="live-control-group search-group">
+                <label class="control-tiny-label"><i class="fa-solid fa-magnifying-glass"></i> Search India</label>
+                <div class="search-input-wrap">
+                    <input id="live-weather-search" class="form-control form-control-sm" placeholder="Type any district (e.g. Varanasi, Thane)..." list="all-districts-datalist" autocomplete="off" />
+                    <datalist id="all-districts-datalist">
+                        {% for item in district_suggestions %}
+                        <option value="{{ item.district }}, {{ item.state }}"></option>
+                        {% endfor %}
+                    </datalist>
+                </div>
+            </div>
+
             <button id="btn-detect-my-weather" class="btn btn-primary btn-sm" title="Get live weather at my GPS coordinates">
-                <i class="fa-solid fa-location-crosshairs"></i> My Live Weather
+                <i class="fa-solid fa-location-crosshairs"></i> GPS
+            </button>
+            <button id="btn-toggle-district-radar" class="btn btn-outline-info btn-sm" title="View all districts in this state">
+                <i class="fa-solid fa-table-cells"></i> State Radar
             </button>
             <button id="btn-refresh-live-weather" class="btn btn-secondary btn-sm" title="Refresh Live Station Readings">
                 <i class="fa-solid fa-arrows-rotate"></i>
@@ -257,6 +285,24 @@
                 </div>
                 {% endfor %}
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- Pan-India State & District Live Weather Radar / Explorer Deck -->
+        <div class="state-district-radar-deck" id="state-district-radar-deck" style="display: none;">
+            <div class="radar-deck-header">
+                <div class="radar-deck-title">
+                    <i class="fa-solid fa-satellite-dish"></i> <span id="radar-state-title">{{ initial_state }}</span> &bull; Real-Time District Weather Radar
+                    <span class="badge-district-count" id="radar-district-count">Loading districts...</span>
+                </div>
+                <div class="radar-deck-actions">
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-close-district-radar" type="button">
+                        <i class="fa-solid fa-xmark"></i> Close Radar
+                    </button>
+                </div>
+            </div>
+            <div class="district-cards-grid" id="district-cards-grid">
+                <div class="district-loading-placeholder"><i class="fa-solid fa-spinner fa-spin"></i> Loading live state telemetry...</div>
             </div>
         </div>
     </div>
@@ -424,20 +470,47 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/map.js') }}?v=2.2"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}?v=2.2"></script>
+<script id="districts-data" type="application/json">
+{{ districts_by_state | tojson }}
+</script>
+<script src="{{ url_for('static', filename='js/map.js') }}?v=3.0"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=3.0"></script>
 <script>
-// Immediate inline handler ensuring instant live weather updates regardless of browser caching
+// Immediate inline handler ensuring instant state-district cascading and updates
 (function() {
     function bindWeatherUI() {
-        const select = document.getElementById("live-weather-city-select");
-        if (select && !select.dataset.bound) {
-            select.dataset.bound = "true";
-            select.addEventListener("change", function(e) {
+        const stateSelect = document.getElementById("live-weather-state-select");
+        const distSelect = document.getElementById("live-weather-district-select");
+        const dataEl = document.getElementById("districts-data");
+        let distData = {};
+        try {
+            if (dataEl) distData = JSON.parse(dataEl.textContent);
+        } catch(e) {}
+
+        if (stateSelect && !stateSelect.dataset.bound) {
+            stateSelect.dataset.bound = "true";
+            stateSelect.addEventListener("change", function(e) {
+                const st = e.target.value;
+                const dList = distData[st] || [];
+                if (distSelect) {
+                    distSelect.innerHTML = dList.map(d => `<option value="${d}">${d}</option>`).join("");
+                    if (dList.length > 0) {
+                        distSelect.value = dList[0];
+                        if (typeof fetchAndDisplayLiveWeather === "function") {
+                            fetchAndDisplayLiveWeather(dList[0], null, null, st, dList[0]);
+                        }
+                    }
+                }
+            });
+        }
+
+        if (distSelect && !distSelect.dataset.bound) {
+            distSelect.dataset.bound = "true";
+            distSelect.addEventListener("change", function(e) {
+                const st = stateSelect ? stateSelect.value : "Maharashtra";
+                const d = e.target.value;
                 if (typeof fetchAndDisplayLiveWeather === "function") {
-                    fetchAndDisplayLiveWeather(e.target.value);
-                } else {
-                    window.location.href = "/?city=" + encodeURIComponent(e.target.value);
+                    fetchAndDisplayLiveWeather(d, null, null, st, d);
                 }
             });
         }

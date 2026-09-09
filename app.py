@@ -34,6 +34,14 @@ from ingestion.open_weather import open_weather_connector
 from ingestion.citizen_handler import citizen_handler
 from ml.feedback import feedback_manager
 from seed import seed_database
+from data.india_districts import (
+    ALL_STATES,
+    INDIA_STATES_DISTRICTS,
+    DISTRICT_SUGGESTIONS,
+    get_all_states,
+    get_districts_for_state,
+    resolve_location
+)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = config.SECRET_KEY
@@ -100,16 +108,28 @@ except Exception as e:
 def index():
     """Main IMD Meteorologist Analytics Dashboard."""
     summary = get_analytics_summary()
-    initial_city = request.args.get("city", "Pune")
-    initial_weather = open_weather_connector.get_live_weather(initial_city)
+    initial_state = request.args.get("state", "Maharashtra")
+    initial_district = request.args.get("district") or request.args.get("city", "Pune")
+    initial_weather = open_weather_connector.get_live_weather(
+        state_name=initial_state,
+        district_name=initial_district
+    )
+
+    districts_by_state = {
+        st: [d["name"] for d in get_districts_for_state(st)]
+        for st in ALL_STATES
+    }
+
     return render_template(
         "index.html",
         categories=config.WEATHER_CATEGORIES,
-        cities=sorted(list(config.MAJOR_INDIAN_CITIES.keys())),
-        states=sorted(list(set(c["state"] for c in config.MAJOR_INDIAN_CITIES.values()))),
-        summary=summary,
+        all_states=ALL_STATES,
+        districts_by_state=districts_by_state,
+        district_suggestions=DISTRICT_SUGGESTIONS,
+        initial_state=initial_weather.get("state", initial_state),
+        initial_district=initial_weather.get("city", initial_district),
         initial_weather=initial_weather,
-        initial_city=initial_city
+        summary=summary
     )
 
 @app.route("/report")
@@ -362,7 +382,9 @@ def api_sync_meteo():
 
 @app.route("/api/weather/live", methods=["GET"])
 def api_live_weather():
-    """Returns real-time ground-truth weather observations and 24h hourly forecast."""
+    """Returns real-time ground-truth weather observations and 24h hourly forecast for any state/district or coordinates."""
+    state = request.args.get("state")
+    district = request.args.get("district")
     city = request.args.get("city")
     lat_val = request.args.get("lat")
     lon_val = request.args.get("lon")
@@ -370,10 +392,42 @@ def api_live_weather():
     lat = float(lat_val) if lat_val else None
     lon = float(lon_val) if lon_val else None
 
-    data = open_weather_connector.get_live_weather(city_name=city, lat=lat, lon=lon)
+    data = open_weather_connector.get_live_weather(
+        city_name=city,
+        lat=lat,
+        lon=lon,
+        state_name=state,
+        district_name=district
+    )
     if not data:
         return jsonify({"error": "Unable to fetch live weather telemetry."}), 502
     return jsonify({"success": True, "data": data})
+
+@app.route("/api/weather/states", methods=["GET"])
+def api_weather_states():
+    """Returns all 36 Indian states/UTs and their districts."""
+    districts_by_state = {
+        st: [d["name"] for d in get_districts_for_state(st)]
+        for st in ALL_STATES
+    }
+    return jsonify({
+        "success": True,
+        "states": ALL_STATES,
+        "districts_by_state": districts_by_state,
+        "suggestions": DISTRICT_SUGGESTIONS
+    })
+
+@app.route("/api/weather/state-summary", methods=["GET"])
+def api_weather_state_summary():
+    """Returns live weather overview for all districts in a given state."""
+    state = request.args.get("state", "Maharashtra")
+    districts_weather = open_weather_connector.get_state_districts_weather(state)
+    return jsonify({
+        "success": True,
+        "state": state,
+        "districts": districts_weather,
+        "count": len(districts_weather)
+    })
 
 @app.route("/api/weather/ticker", methods=["GET"])
 def api_weather_ticker():

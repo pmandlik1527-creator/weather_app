@@ -2264,3 +2264,194 @@ body.light-theme .chip-role {
     justify-content: center;
     gap: 0.4rem;
 }
+
+/* ====================================================================
+   All-India States & Districts Live Controls & Radar Grid Styling
+   ==================================================================== */
+.live-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.control-tiny-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #38bdf8;
+    margin-bottom: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+body.light-theme .control-tiny-label {
+    color: #0284c7;
+}
+
+.state-dropdown, .district-dropdown {
+    font-weight: 600;
+    min-width: 140px;
+    max-width: 180px;
+}
+
+.search-group {
+    min-width: 220px;
+}
+
+.search-input-wrap input {
+    font-size: 0.8rem;
+    padding: 0.28rem 0.6rem;
+    border-radius: 6px;
+}
+
+.state-district-radar-deck {
+    margin-top: 1.25rem;
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+    animation: fadeInRadar 0.3s ease-in-out;
+}
+
+body.light-theme .state-district-radar-deck {
+    background: #ffffff;
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes fadeInRadar {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.radar-deck-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.85rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+body.light-theme .radar-deck-header {
+    border-bottom-color: #e2e8f0;
+}
+
+.radar-deck-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badge-district-count {
+    font-size: 0.68rem;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    padding: 0.15rem 0.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+}
+
+.district-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0.75rem;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 0.25rem;
+}
+
+.district-weather-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 0.65rem 0.8rem;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+body.light-theme .district-weather-card {
+    background: #f8fafc;
+    border-color: #e2e8f0;
+}
+
+.district-weather-card:hover {
+    transform: translateY(-2px);
+    border-color: #38bdf8;
+    background: rgba(56, 189, 248, 0.1);
+    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+}
+
+.dw-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dw-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--text-heading);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dw-icon {
+    font-size: 0.95rem;
+    color: #38bdf8;
+}
+
+.dw-card-mid {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+}
+
+.dw-temp {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #38bdf8;
+    font-family: 'JetBrains Mono', monospace;
+}
+
+body.light-theme .dw-temp {
+    color: #0284c7;
+}
+
+.dw-desc {
+    font-size: 0.68rem;
+    color: var(--text-secondary);
+}
+
+.dw-card-bottom {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.66rem;
+    color: #94a3b8;
+    padding-top: 0.25rem;
+    border-top: 1px dashed rgba(255, 255, 255, 0.08);
+}
+
+body.light-theme .dw-card-bottom {
+    border-top-color: #e2e8f0;
+    color: #64748b;
+}
+
+.district-loading-placeholder, .district-empty-msg {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 2rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}

@@ -58,11 +58,12 @@ async function refreshLiveTicker(force = false) {
 // Expose globally
 window.refreshLiveTicker = refreshLiveTicker;
 window.selectCityForWeather = function(cityName) {
-    const citySelect = document.getElementById("live-weather-city-select");
-    if (citySelect) {
-        citySelect.value = cityName;
-        citySelect.dispatchEvent(new Event("change"));
-        citySelect.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (typeof fetchAndDisplayLiveWeather === "function") {
+        fetchAndDisplayLiveWeather(cityName);
+    }
+    const displayEl = document.getElementById("live-weather-display");
+    if (displayEl) {
+        displayEl.scrollIntoView({ behavior: "smooth", block: "center" });
     }
 };
 

@@ -604,18 +604,22 @@ document.addEventListener("click", (e) => {
 // Real-Time Live Meteorological Ground Station Controller
 // ====================================================================
 
-async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null) {
+async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null, state = null, district = null) {
     const displayEl = document.getElementById("live-weather-display");
     if (!displayEl) return;
 
     try {
         let url = "/api/weather/live?";
-        if (city) {
+        if (state && district) {
+            url += `state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`;
+        } else if (district) {
+            url += `district=${encodeURIComponent(district)}`;
+        } else if (city) {
             url += `city=${encodeURIComponent(city)}`;
         } else if (lat !== null && lon !== null) {
             url += `lat=${lat}&lon=${lon}`;
         } else {
-            url += "city=New%20Delhi";
+            url += "state=Maharashtra&district=Pune";
         }
 
         const res = await fetch(url);
@@ -661,19 +665,87 @@ async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null) {
                 </div>
             `).join("");
         }
+
+        // Fly map to the selected district and add active station marker
+        if (map && data.latitude && data.longitude) {
+            map.flyTo([data.latitude, data.longitude], 8, { duration: 1.0 });
+        }
+
+        // Keep dropdowns in sync
+        const stateSelect = document.getElementById("live-weather-state-select");
+        const distSelect = document.getElementById("live-weather-district-select");
+        if (stateSelect && data.state && stateSelect.value !== data.state) {
+            stateSelect.value = data.state;
+            stateSelect.dispatchEvent(new Event("change"));
+        }
+        if (distSelect && data.city) {
+            distSelect.value = data.city;
+        }
+
     } catch (err) {
         console.error("[LIVE WEATHER] Fetch error:", err);
     }
 }
 
 function initLiveWeatherCard() {
-    const select = document.getElementById("live-weather-city-select");
+    const stateSelect = document.getElementById("live-weather-state-select");
+    const distSelect = document.getElementById("live-weather-district-select");
+    const searchInput = document.getElementById("live-weather-search");
     const detectBtn = document.getElementById("btn-detect-my-weather");
     const refreshBtn = document.getElementById("btn-refresh-live-weather");
+    const toggleRadarBtn = document.getElementById("btn-toggle-district-radar");
+    const closeRadarBtn = document.getElementById("btn-close-district-radar");
+    const radarDeck = document.getElementById("state-district-radar-deck");
 
-    if (select) {
-        select.addEventListener("change", (e) => {
-            fetchAndDisplayLiveWeather(e.target.value);
+    let districtsMap = {};
+    const dataEl = document.getElementById("districts-data");
+    if (dataEl) {
+        try { districtsMap = JSON.parse(dataEl.textContent); } catch(e) {}
+    }
+
+    if (stateSelect) {
+        stateSelect.addEventListener("change", (e) => {
+            const state = e.target.value;
+            const dists = districtsMap[state] || [];
+            if (distSelect) {
+                distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
+                if (dists.length > 0) {
+                    distSelect.value = dists[0];
+                    fetchAndDisplayLiveWeather(dists[0], null, null, state, dists[0]);
+                }
+            }
+            if (radarDeck && radarDeck.style.display !== "none") {
+                loadStateDistrictRadar(state);
+            }
+        });
+    }
+
+    if (distSelect) {
+        distSelect.addEventListener("change", (e) => {
+            const state = stateSelect ? stateSelect.value : "Maharashtra";
+            const dist = e.target.value;
+            fetchAndDisplayLiveWeather(dist, null, null, state, dist);
+        });
+    }
+
+    if (searchInput) {
+        searchInput.addEventListener("change", (e) => {
+            const val = e.target.value.trim();
+            if (!val) return;
+            const parts = val.split(",");
+            const targetDist = parts[0].trim();
+            const targetState = parts.length > 1 ? parts[1].trim() : null;
+
+            if (targetState && stateSelect) {
+                stateSelect.value = targetState;
+                const dists = districtsMap[targetState] || [];
+                if (distSelect) {
+                    distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
+                    distSelect.value = targetDist;
+                }
+            }
+            fetchAndDisplayLiveWeather(targetDist, null, null, targetState, targetDist);
+            searchInput.value = "";
         });
     }
 
@@ -684,22 +756,19 @@ function initLiveWeatherCard() {
                 return;
             }
             detectBtn.disabled = true;
-            detectBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Detecting...`;
+            detectBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> GPS...`;
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const lat = pos.coords.latitude;
                     const lon = pos.coords.longitude;
                     fetchAndDisplayLiveWeather(null, lat, lon);
                     detectBtn.disabled = false;
-                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> My Live Weather`;
-                    if (map) {
-                        map.flyTo([lat, lon], 9, { duration: 1.2 });
-                    }
+                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> GPS`;
                 },
                 (err) => {
                     alert("Could not acquire GPS position: " + err.message);
                     detectBtn.disabled = false;
-                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> My Live Weather`;
+                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> GPS`;
                 }
             );
         });
@@ -707,19 +776,112 @@ function initLiveWeatherCard() {
 
     if (refreshBtn) {
         refreshBtn.addEventListener("click", () => {
-            const currentCity = select ? select.value : "New Delhi";
+            const currentState = stateSelect ? stateSelect.value : "Maharashtra";
+            const currentDist = distSelect ? distSelect.value : "Pune";
             refreshBtn.disabled = true;
             refreshBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
-            fetchAndDisplayLiveWeather(currentCity).finally(() => {
+            fetchAndDisplayLiveWeather(currentDist, null, null, currentState, currentDist).finally(() => {
                 refreshBtn.disabled = false;
                 refreshBtn.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i>`;
             });
+            if (radarDeck && radarDeck.style.display !== "none") {
+                loadStateDistrictRadar(currentState);
+            }
         });
     }
 
-    // Load initial city weather (New Delhi default)
-    fetchAndDisplayLiveWeather("New Delhi");
+    if (toggleRadarBtn && radarDeck) {
+        toggleRadarBtn.addEventListener("click", () => {
+            const isShown = radarDeck.style.display !== "none";
+            if (isShown) {
+                radarDeck.style.display = "none";
+                toggleRadarBtn.classList.remove("active");
+            } else {
+                radarDeck.style.display = "block";
+                toggleRadarBtn.classList.add("active");
+                const state = stateSelect ? stateSelect.value : "Maharashtra";
+                loadStateDistrictRadar(state);
+                radarDeck.scrollIntoView({ behavior: "smooth", block: "nearest" });
+            }
+        });
+    }
+
+    if (closeRadarBtn && radarDeck) {
+        closeRadarBtn.addEventListener("click", () => {
+            radarDeck.style.display = "none";
+            if (toggleRadarBtn) toggleRadarBtn.classList.remove("active");
+        });
+    }
+
+    const initSt = stateSelect ? stateSelect.value : "Maharashtra";
+    const initDist = distSelect ? distSelect.value : "Pune";
+    fetchAndDisplayLiveWeather(initDist, null, null, initSt, initDist);
 }
+
+// Global function to fetch and render All Districts Radar Grid for a state
+async function loadStateDistrictRadar(stateName) {
+    const gridEl = document.getElementById("district-cards-grid");
+    const titleEl = document.getElementById("radar-state-title");
+    const countEl = document.getElementById("radar-district-count");
+    if (!gridEl) return;
+
+    if (titleEl) titleEl.textContent = stateName;
+    if (countEl) countEl.textContent = "Querying satellite telemetry...";
+    gridEl.innerHTML = `<div class="district-loading-placeholder"><i class="fa-solid fa-satellite-dish fa-spin"></i> Querying ground telemetry across all districts in ${stateName}...</div>`;
+
+    try {
+        const res = await fetch(`/api/weather/state-summary?state=${encodeURIComponent(stateName)}`);
+        if (!res.ok) throw new Error("Could not fetch state summary");
+        const json = await res.json();
+        const districts = json.districts || [];
+
+        if (countEl) countEl.textContent = `${districts.length} Districts Active`;
+
+        if (districts.length === 0) {
+            gridEl.innerHTML = `<div class="district-empty-msg">No district telemetry available for ${stateName}.</div>`;
+            return;
+        }
+
+        gridEl.innerHTML = districts.map(d => `
+            <div class="district-weather-card" onclick="selectDistrictFromRadar('${d.state}', '${d.district}', ${d.lat}, ${d.lon})" title="Click to view live gauges for ${d.district}">
+                <div class="dw-card-top">
+                    <span class="dw-name">${d.district}</span>
+                    <span class="dw-icon"><i class="fa-solid ${d.icon}"></i></span>
+                </div>
+                <div class="dw-card-mid">
+                    <span class="dw-temp">${d.temperature}°C</span>
+                    <span class="dw-desc">${d.emoji} ${d.condition_desc}</span>
+                </div>
+                <div class="dw-card-bottom">
+                    <span><i class="fa-solid fa-droplet"></i> ${d.humidity}%</span>
+                    <span><i class="fa-solid fa-wind"></i> ${d.wind_speed_kmh}km/h</span>
+                    <span><i class="fa-solid fa-cloud-rain"></i> ${d.precipitation_mm}mm</span>
+                </div>
+            </div>
+        `).join("");
+    } catch (err) {
+        console.error("State summary error:", err);
+        gridEl.innerHTML = `<div class="district-empty-msg">Unable to load district radar: ${err.message}</div>`;
+    }
+}
+
+// Global handler when a district card is clicked in the Radar
+window.selectDistrictFromRadar = function(state, district, lat, lon) {
+    const stateSelect = document.getElementById("live-weather-state-select");
+    const distSelect = document.getElementById("live-weather-district-select");
+    if (stateSelect && stateSelect.value !== state) {
+        stateSelect.value = state;
+        stateSelect.dispatchEvent(new Event("change"));
+    }
+    if (distSelect) {
+        distSelect.value = district;
+    }
+    fetchAndDisplayLiveWeather(district, lat, lon, state, district);
+    const displayEl = document.getElementById("live-weather-display");
+    if (displayEl) {
+        displayEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+};
 
 // ====================================================================
 // Map Live Ground Weather Stations Layer

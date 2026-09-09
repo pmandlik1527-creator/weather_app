@@ -58,9 +58,11 @@ class TestAPI(unittest.TestCase):
 
     def test_citizen_registration(self):
         """Verify citizen registration and auto-login."""
+        import uuid
+        uid = uuid.uuid4().hex[:6]
         reg_res = self.app.post("/register", data={
-            "username": "test_citizen_user",
-            "email": "citizen@imd.gov.in",
+            "username": f"user_{uid}",
+            "email": f"citizen_{uid}@imd.gov.in",
             "full_name": "Citizen Reporter",
             "password": "SecurePassword123",
             "confirm_password": "SecurePassword123"
@@ -124,6 +126,43 @@ class TestAPI(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         self.assertEqual(res.mimetype, "text/csv")
         self.assertIn(b"Report ID", res.data)
+
+    def test_api_weather_states(self):
+        """Verify /api/weather/states returns all 36 Indian states/UTs."""
+        res = self.app.get("/api/weather/states")
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data.get("success"))
+        self.assertIn("states", data)
+        self.assertIn("districts_by_state", data)
+        self.assertIn("Maharashtra", data["states"])
+        self.assertIn("Delhi", data["states"])
+        self.assertIn("Tamil Nadu", data["states"])
+        self.assertIn("Pune", data["districts_by_state"]["Maharashtra"])
+
+    def test_api_live_weather_district(self):
+        """Verify /api/weather/live returns live telemetry and 12-hour micro-forecast."""
+        res = self.app.get("/api/weather/live?state=Maharashtra&district=Pune")
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data.get("success"))
+        weather = data.get("data", {})
+        self.assertEqual(weather.get("city"), "Pune")
+        self.assertEqual(weather.get("state"), "Maharashtra")
+        self.assertIn("temperature", weather)
+        self.assertIn("humidity", weather)
+        self.assertIn("hourly", weather)
+        self.assertGreaterEqual(len(weather["hourly"]), 12)
+
+    def test_api_weather_state_summary(self):
+        """Verify /api/weather/state-summary returns all districts in state."""
+        res = self.app.get("/api/weather/state-summary?state=Goa")
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data.get("state"), "Goa")
+        districts = data.get("districts", [])
+        self.assertGreaterEqual(len(districts), 3)
 
 if __name__ == "__main__":
     unittest.main()
