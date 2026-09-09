@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+
+{% block title %}IMD Admin & AI Moderation Console | MoES{% endblock %}
+
+{% block extra_css %}
+<style>
+.admin-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.table-responsive {
+    overflow-x: auto;
+    width: 100%;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.admin-table th {
+    background: rgba(15, 23, 42, 0.9);
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.admin-table tr:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.source-toggle-badge {
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.2rem 0.6rem;
+    border-radius: 12px;
+    border: none;
+}
+
+.badge-active { background: rgba(16, 185, 129, 0.2); color: var(--accent-emerald); border: 1px solid rgba(16, 185, 129, 0.4); }
+.badge-paused { background: rgba(244, 63, 94, 0.2); color: var(--accent-rose); border: 1px solid rgba(244, 63, 94, 0.4); }
+
+.reason-tag {
+    display: inline-block;
+    background: rgba(244, 63, 94, 0.15);
+    color: #fda4af;
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    font-size: 0.7rem;
+    padding: 0.15rem 0.45rem;
+    border-radius: 4px;
+    margin-right: 0.3rem;
+    margin-top: 0.2rem;
+}
+
+.feedback-banner {
+    background: linear-gradient(90deg, rgba(30, 58, 138, 0.3), rgba(6, 182, 212, 0.2));
+    border: 1px solid var(--border-highlight);
+    border-radius: 8px;
+    padding: 0.85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="admin-grid">
+    <!-- Active Learning & Pipeline Telemetry Banner -->
+    <div class="feedback-banner">
+        <div>
+            <h4 style="color: #ffffff; font-size: 0.95rem; margin-bottom: 0.2rem;">
+                <i class="fa-solid fa-brain"></i> Active Learning & Feedback Loop Active
+            </h4>
+            <p style="font-size: 0.78rem; color: var(--text-secondary);">
+                Model Precision: <strong style="color: var(--accent-emerald);">{{ ml_stats.model_precision_rate }}%</strong> &bull;
+                Analyst Corrections: <strong>{{ ml_stats.analyst_interventions }}</strong> &bull;
+                Queue Depth: <strong>{{ telemetry.queue_depth }}</strong> &bull;
+                Avg Ingestion Latency: <strong style="font-family: var(--font-mono); color: var(--accent-cyan);">{{ telemetry.average_latency_ms }} ms</strong>
+            </p>
+        </div>
+        <button id="btn-trigger-retrain" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-arrows-rotate"></i> Assimilate Feedback & Retrain
+        </button>
+    </div>
+
+    <!-- Section 1: AI Moderation Review Queue -->
+    <div class="chart-card">
+        <div class="card-header" style="background: none; padding-left: 0; padding-right: 0;">
+            <div class="card-title">
+                <i class="fa-solid fa-list-check"></i> Real-Time AI Moderation Queue (Flagged / Unverified)
+            </div>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">
+                1-Click Human-in-the-Loop Decisions
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Report UUID / Source</th>
+                        <th>Location & Author</th>
+                        <th>AI Category & Confidence</th>
+                        <th>Authenticity & Signals</th>
+                        <th>Report Content</th>
+                        <th>Analyst Action</th>
+                    </tr>
+                </thead>
+                <tbody id="moderation-queue-body">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                            <i class="fa-solid fa-spinner fa-spin"></i> Loading moderation items...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 2: Ingestion Sources Manager -->
+    <div class="chart-card">
+        <div class="card-header" style="background: none; padding-left: 0; padding-right: 0;">
+            <div class="card-title">
+                <i class="fa-solid fa-diagram-project"></i> Ingestion Sources & Hashtag Connectors
+            </div>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Configure Polling Channels & Keywords
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Source ID</th>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>Tracked Hashtags / API Query</th>
+                        <th>Poll Interval</th>
+                        <th>Total Ingested</th>
+                        <th>Status / Toggle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for src in sources %}
+                    <tr>
+                        <td style="font-family: var(--font-mono); font-weight: 600; color: var(--accent-cyan);">{{ src.source_id }}</td>
+                        <td><strong>{{ src.name }}</strong></td>
+                        <td><span class="report-category-badge">{{ src.source_type }}</span></td>
+                        <td style="font-family: var(--font-mono); font-size: 0.76rem; color: #93c5fd;">{{ src.target_query }}</td>
+                        <td>{{ src.polling_interval_seconds }}s</td>
+                        <td style="font-family: var(--font-mono); font-weight: 700;">{{ src.total_ingested }}</td>
+                        <td>
+                            <button class="source-toggle-badge {% if src.is_active %}badge-active{% else %}badge-paused{% endif %}"
+                                    onclick="toggleSource('{{ src.source_id }}', {{ 0 if src.is_active else 1 }})">
+                                {% if src.is_active %}<i class="fa-solid fa-check"></i> ACTIVE{% else %}<i class="fa-solid fa-pause"></i> PAUSED{% endif %}
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 3: Audit Trail Log -->
+    <div class="chart-card">
+        <div class="card-header" style="background: none; padding-left: 0; padding-right: 0;">
+            <div class="card-title">
+                <i class="fa-solid fa-fingerprint"></i> Human-in-the-Loop Moderation Audit Log
+            </div>
+            <span style="font-size: 0.78rem; color: var(--text-muted);">
+                Tamper-Evident Action History
+            </span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Timestamp (IST)</th>
+                        <th>Operator</th>
+                        <th>Report ID</th>
+                        <th>Status Transition</th>
+                        <th>Category Change</th>
+                        <th>Notes / Justification</th>
+                    </tr>
+                </thead>
+                <tbody id="audit-logs-body">
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 1.5rem;">
+                            Loading audit history...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+{% endblock %}

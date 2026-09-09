@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Big Data Analytics & Trends | IMD MoES{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+    <div>
+        <h2 style="font-size: 1.4rem; font-weight: 800; color: #ffffff;">
+            <i class="fa-solid fa-chart-pie"></i> National Weather Big Data Analytics Suite
+        </h2>
+        <p style="font-size: 0.85rem; color: var(--text-secondary);">
+            Deep intelligence aggregation across heterogeneous crowd signals, public APIs, and sensor networks.
+        </p>
+    </div>
+    <div style="display: flex; gap: 0.6rem;">
+        <a href="/api/export/csv" class="btn btn-primary btn-sm">
+            <i class="fa-solid fa-file-csv"></i> Download CSV Dataset
+        </a>
+        <a href="/api/export/json" class="btn btn-secondary btn-sm">
+            <i class="fa-solid fa-file-code"></i> Download JSON
+        </a>
+    </div>
+</div>
+
+<!-- Key Performance & Big Data Metrics -->
+<section class="kpi-grid">
+    <div class="kpi-card kpi-cyan">
+        <div class="kpi-icon"><i class="fa-solid fa-database"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value">{{ summary.totals.total_reports or 0 }}</span>
+            <span class="kpi-label">Aggregated Reports</span>
+            <span class="kpi-subtext">Heterogeneous Data Lake</span>
+        </div>
+    </div>
+    <div class="kpi-card kpi-emerald">
+        <div class="kpi-icon"><i class="fa-solid fa-compress"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value">{{ summary.totals.active_cluster_count or 0 }}</span>
+            <span class="kpi-label">Actionable Incidents</span>
+            <span class="kpi-subtext">Deduplication Active</span>
+        </div>
+    </div>
+    <div class="kpi-card kpi-rose">
+        <div class="kpi-icon"><i class="fa-solid fa-filter"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value">{{ summary.totals.fake_count or 0 }}</span>
+            <span class="kpi-label">Fake Reports Suppressed</span>
+            <span class="kpi-subtext">Preventing False Alerts</span>
+        </div>
+    </div>
+    <div class="kpi-card kpi-amber">
+        <div class="kpi-icon"><i class="fa-solid fa-star"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value">{{ "%.1f"|format(summary.totals.avg_credibility or 70.0) }}</span>
+            <span class="kpi-label">Avg Source Credibility</span>
+            <span class="kpi-subtext">Out of 100 Index</span>
+        </div>
+    </div>
+</section>
+
+<!-- Source Platform Breakdown Table & Charts -->
+<div class="dashboard-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 1.5rem;">
+    <div class="chart-card">
+        <div class="card-title">
+            <i class="fa-solid fa-diagram-project"></i> Ingestion by Source Platform
+        </div>
+        <table class="admin-table" style="margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th>Platform Channel</th>
+                    <th>Report Volume</th>
+                    <th>Mean Credibility</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for src in summary.source_breakdown %}
+                <tr>
+                    <td><strong><i class="fa-solid fa-hashtag"></i> {{ src.source_type|upper }}</strong></td>
+                    <td style="font-family: var(--font-mono); font-weight: 700; color: #60a5fa;">{{ src.count }}</td>
+                    <td style="font-family: var(--font-mono);">{{ "%.1f"|format(src.avg_credibility or 60.0) }}/100</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="chart-card">
+        <div class="card-title">
+            <i class="fa-solid fa-map-pin"></i> Top Regional Weather Hotspots
+        </div>
+        <table class="admin-table" style="margin-top: 1rem;">
+            <thead>
+                <tr>
+                    <th>State / Region</th>
+                    <th>Total Reports</th>
+                    <th>Misinformation Flagged</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for st in summary.state_hotspots %}
+                <tr>
+                    <td><strong>{{ st.state }}</strong></td>
+                    <td style="font-family: var(--font-mono); font-weight: 700; color: #34d399;">{{ st.count }}</td>
+                    <td>
+                        {% if st.fake_count > 0 %}
+                        <span class="reason-tag">{{ st.fake_count }} Hoaxes Detected</span>
+                        {% else %}
+                        <span style="color: var(--accent-emerald); font-size: 0.75rem;"><i class="fa-solid fa-check"></i> Clean</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

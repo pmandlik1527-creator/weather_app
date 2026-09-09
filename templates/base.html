@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}National Weather Big Data Analytics Platform | MoES - IMD{% endblock %}</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body class="dark-theme">
+    <!-- Tiranga National Stripe -->
+    <div class="tiranga-bar"></div>
+
+    <!-- Main Navigation Header -->
+    <header class="app-header">
+        <div class="header-container">
+            <div class="brand-group">
+                <div class="emblem-wrapper">
+                    <!-- Ashoka Chakra SVG icon / Emblem indicator -->
+                    <div class="chakra-icon">
+                        <i class="fa-solid fa-cloud-sun-rain"></i>
+                    </div>
+                </div>
+                <div class="brand-text">
+                    <div class="org-title">
+                        <span class="govt-text">GOVERNMENT OF INDIA</span>
+                        <span class="divider">|</span>
+                        <span>MINISTRY OF EARTH SCIENCES (MoES)</span>
+                    </div>
+                    <h1 class="platform-title">
+                        National Weather Big Data Analytics Platform
+                        <span class="badge-imd">IMD INTELLIGENCE</span>
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Header Right: Telemetry & Navigation -->
+            <div class="header-controls">
+                <nav class="nav-links">
+                    <a href="{{ url_for('index') }}" class="nav-item {% if request.path == '/' %}active{% endif %}">
+                        <i class="fa-solid fa-radar"></i> Operational Radar
+                    </a>
+                    <a href="{{ url_for('citizen_portal') }}" class="nav-item {% if request.path == '/report' %}active{% endif %}">
+                        <i class="fa-solid fa-users-viewfinder"></i> Citizen Desk
+                    </a>
+                    <a href="{{ url_for('admin_panel') }}" class="nav-item {% if request.path == '/admin' %}active{% endif %}">
+                        <i class="fa-solid fa-shield-halved"></i> Moderation & AI
+                    </a>
+                    <a href="{{ url_for('analytics_view') }}" class="nav-item {% if request.path == '/analytics' %}active{% endif %}">
+                        <i class="fa-solid fa-chart-line"></i> Big Data Trends
+                    </a>
+                </nav>
+
+                <div class="telemetry-pill">
+                    <span class="pulse-indicator"></span>
+                    <span class="telemetry-label">STREAM:</span>
+                    <span id="header-stream-status" class="status-online">LIVE</span>
+                    <span class="divider-v">|</span>
+                    <span id="header-clock">--:--:-- IST</span>
+                </div>
+
+                <!-- Theme Switcher (Light / Dark Mode) -->
+                <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-moon theme-icon-dark"></i>
+                    <i class="fa-solid fa-sun theme-icon-light"></i>
+                    <span id="theme-text-label">Dark</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="main-wrapper">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-left">
+                <p>
+                    <strong>India Meteorological Department (IMD)</strong> &bull; Ministry of Earth Sciences, New Delhi
+                    <br>
+                    <small>Problem Statement ID: 26069 &bull; Smart India Hackathon &bull; Open-Source Big Data & AI Platform</small>
+                </p>
+            </div>
+            <div class="footer-right">
+                <span class="security-badge"><i class="fa-solid fa-lock"></i> Official Government Intelligence Interface</span>
+                <span class="version-tag">v1.0-PRODUCTION</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Global App Script -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

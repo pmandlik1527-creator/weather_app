@@ -1,0 +1,314 @@
+{% extends "base.html" %}
+
+{% block title %}Operational Radar | National Weather Big Data Analytics Platform (MoES/IMD){% endblock %}
+
+{% block content %}
+<!-- Top Operational KPIs -->
+<section class="kpi-grid">
+    <div class="kpi-card kpi-cyan">
+        <div class="kpi-icon"><i class="fa-solid fa-satellite-dish"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value" id="kpi-total-reports">{{ summary.totals.total_reports or 0 }}</span>
+            <span class="kpi-label">Big Data Weather Reports</span>
+            <span class="kpi-subtext">Social + Citizen + Sensors</span>
+        </div>
+    </div>
+
+    <div class="kpi-card kpi-emerald">
+        <div class="kpi-icon"><i class="fa-solid fa-network-wired"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value" id="kpi-active-clusters">{{ summary.totals.active_cluster_count or 0 }}</span>
+            <span class="kpi-label">Deduplicated Incidents</span>
+            <span class="kpi-subtext">Spatio-Temporal Clusters</span>
+        </div>
+    </div>
+
+    <div class="kpi-card kpi-amber">
+        <div class="kpi-icon"><i class="fa-solid fa-shield-check"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value" id="kpi-authenticity">{{ "%.1f"|format(summary.totals.avg_authenticity or 85.0) }}%</span>
+            <span class="kpi-label">Mean Authenticity</span>
+            <span class="kpi-subtext">AI Multi-Signal Confidence</span>
+        </div>
+    </div>
+
+    <div class="kpi-card kpi-rose">
+        <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value" id="kpi-fake-reports">{{ summary.totals.fake_count or 0 }}</span>
+            <span class="kpi-label">Flagged Hoaxes / Fake</span>
+            <span class="kpi-subtext">Filtered Out from Forecasts</span>
+        </div>
+    </div>
+
+    <div class="kpi-card">
+        <div class="kpi-icon"><i class="fa-solid fa-bolt-lightning"></i></div>
+        <div class="kpi-data">
+            <span class="kpi-value" id="kpi-throughput">--</span>
+            <span class="kpi-label">Ingestion Throughput</span>
+            <span class="kpi-subtext" id="kpi-latency">Sub-second Latency</span>
+        </div>
+    </div>
+</section>
+
+<!-- Multi-Criteria Operational Filter Toolbar -->
+<section class="filter-toolbar">
+    <div class="filter-row">
+        <!-- Date / Time Filter -->
+        <div class="filter-group">
+            <span class="filter-label"><i class="fa-regular fa-clock"></i> Time Window:</span>
+            <select id="filter-time" class="form-select">
+                <option value="all">All Available</option>
+                <option value="24h" selected>Last 24 Hours</option>
+                <option value="today">Today (IST)</option>
+                <option value="7d">Last 7 Days</option>
+            </select>
+        </div>
+
+        <!-- State Selector -->
+        <div class="filter-group">
+            <span class="filter-label"><i class="fa-solid fa-map-location-dot"></i> State:</span>
+            <select id="filter-state" class="form-select">
+                <option value="all">All India States</option>
+                {% for st in states %}
+                <option value="{{ st }}">{{ st }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- City Selector -->
+        <div class="filter-group">
+            <span class="filter-label"><i class="fa-solid fa-city"></i> City / Center:</span>
+            <select id="filter-city" class="form-select">
+                <option value="all">All Cities</option>
+                {% for c in cities %}
+                <option value="{{ c }}">{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Verification Status -->
+        <div class="filter-group">
+            <span class="filter-label"><i class="fa-solid fa-certificate"></i> Status:</span>
+            <select id="filter-status" class="form-select">
+                <option value="all">All Verification Tiers</option>
+                <option value="verified">Verified Official / Authentic</option>
+                <option value="unverified">Unverified Public Reports</option>
+                <option value="flagged_fake">Flagged Fake / Misinformation</option>
+            </select>
+        </div>
+
+        <!-- Source Platform -->
+        <div class="filter-group">
+            <span class="filter-label"><i class="fa-solid fa-rss"></i> Source:</span>
+            <select id="filter-source" class="form-select">
+                <option value="all">All Channels</option>
+                <option value="twitter">X / Twitter</option>
+                <option value="citizen">Citizen Desk</option>
+                <option value="open_meteo">Open Weather Stations</option>
+                <option value="instagram">Instagram</option>
+            </select>
+        </div>
+
+        <button id="btn-reset-filters" class="btn btn-secondary">
+            <i class="fa-solid fa-rotate-left"></i> Reset
+        </button>
+
+        <a href="/api/export/csv" class="btn btn-secondary" title="Export Filtered Big Data">
+            <i class="fa-solid fa-file-csv"></i> CSV
+        </a>
+    </div>
+
+    <!-- Category Chips Filter -->
+    <div class="filter-row">
+        <span class="filter-label"><i class="fa-solid fa-layer-group"></i> Event Categories:</span>
+        <div class="category-chips" id="category-chips-container">
+            <div class="chip active" data-category="ALL">ALL CATEGORIES</div>
+            {% for cat in categories %}
+            <div class="chip" data-category="{{ cat }}">{{ cat }}</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Satellite Weather Photo Intelligence Live Alert Banner -->
+<div class="satellite-preview-strip" onclick="openInsatModal()" title="Click to view high-resolution INSAT-3DR Satellite Weather Photo">
+    <div class="sat-thumb-wrap">
+        <img src="{{ url_for('static', filename='img/insat_satellite_radar.jpg') }}" alt="INSAT-3DR Weather Satellite Photography" class="sat-thumb-img">
+        <span class="live-radar-pulse"></span>
+    </div>
+    <div class="sat-strip-info">
+        <div class="sat-strip-tag-row">
+            <span class="sat-pill-badge"><i class="fa-solid fa-satellite"></i> INSAT-3DR LIVE METEOROLOGICAL PHOTO</span>
+            <span class="sat-pill-alert"><i class="fa-solid fa-hurricane"></i> ACTIVE CYCLONIC DEPRESSION</span>
+            <span class="sat-pill-time"><i class="fa-solid fa-clock"></i> PASS: 15:30 UTC</span>
+        </div>
+        <div class="sat-strip-desc">Multi-spectral spaceborne imagery over Indian Subcontinent & Bay of Bengal. High-resolution cloud formation tracking correlated with ground truth.</div>
+    </div>
+    <button class="btn btn-secondary btn-sm sat-strip-cta" type="button">
+        <i class="fa-solid fa-expand"></i> View Satellite Photo
+    </button>
+</div>
+
+<!-- Main Operational Layout: Interactive Map + Live Stream Feed -->
+<div class="dashboard-grid">
+    <!-- Left: Geospatial Map View -->
+    <div class="map-container-card">
+        <div class="card-header">
+            <div class="card-title">
+                <i class="fa-solid fa-earth-asia"></i> Real-Time Geospatial Meteorological Map
+                <span class="badge-imd" style="cursor:pointer;" onclick="openInsatModal()" title="View High-Res INSAT Satellite Photo">
+                    <i class="fa-solid fa-satellite"></i> SATELLITE PHOTO
+                </span>
+            </div>
+            <div class="map-toolbar">
+                <!-- Map Layer Switcher -->
+                <div class="map-style-wrapper">
+                    <label for="map-style-select" class="map-style-label"><i class="fa-solid fa-layer-group"></i> Layer:</label>
+                    <select id="map-style-select" class="form-select form-select-sm map-style-dropdown" title="Switch Map Photography / Basemap">
+                        <option value="satellite" selected>🛰️ Satellite Photo (Earth Imagery)</option>
+                        <option value="topo">🌈 Vibrant Topo & Terrain</option>
+                        <option value="dark">🌙 Dark Tactical Radar</option>
+                        <option value="light">☀️ Daylight Administrative</option>
+                        <option value="osm">🗺️ OpenStreetMap Standard</option>
+                    </select>
+                </div>
+                <button id="btn-open-insat-photo" class="btn btn-secondary btn-sm" title="View High-Resolution INSAT-3DR Weather Satellite Photography" onclick="openInsatModal()">
+                    <i class="fa-solid fa-camera"></i> Satellite Photo
+                </button>
+                <button id="btn-toggle-heatmap" class="btn btn-secondary btn-sm" title="Toggle Density Heatmap">
+                    <i class="fa-solid fa-fire-flame-curved"></i> Heatmap
+                </button>
+                <button id="btn-locate-me" class="btn btn-secondary btn-sm" title="Center on My Location">
+                    <i class="fa-solid fa-crosshairs"></i> Near Me
+                </button>
+                <button id="btn-recenter-india" class="btn btn-secondary btn-sm" title="Reset Map to All-India">
+                    <i class="fa-solid fa-expand"></i> All India
+                </button>
+            </div>
+        </div>
+        <div id="map-view"></div>
+    </div>
+
+    <!-- Right: Stream Feeds & Deduplicated Incident Clusters -->
+    <div class="side-panel-card">
+        <div class="panel-tabs">
+            <button class="panel-tab-btn active" id="tab-btn-feed" onclick="switchSideTab('feed')">
+                <i class="fa-solid fa-stream"></i> Live Feed (<span id="feed-count">0</span>)
+            </button>
+            <button class="panel-tab-btn" id="tab-btn-clusters" onclick="switchSideTab('clusters')">
+                <i class="fa-solid fa-object-group"></i> Incidents (<span id="clusters-count">0</span>)
+            </button>
+        </div>
+
+        <!-- Ingestion Simulator Controls -->
+        <div class="stream-controls-bar">
+            <button id="btn-toggle-stream" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-play" id="stream-icon"></i> <span id="stream-btn-text">Start Live Stream</span>
+            </button>
+            <button id="btn-stream-pulse" class="btn btn-secondary btn-sm" title="Inject an immediate weather tweet">
+                <i class="fa-solid fa-bolt"></i> Ingest Now
+            </button>
+            <button id="btn-sync-meteo" class="btn btn-secondary btn-sm" title="Poll Open-Meteo Ground Stations">
+                <i class="fa-solid fa-tower-broadcast"></i> Sync Radar
+            </button>
+        </div>
+
+        <!-- Tab 1: Live Feed Container -->
+        <div class="feed-content" id="live-feed-list">
+            <div class="empty-state">
+                <i class="fa-solid fa-spinner fa-spin"></i> Loading weather intelligence stream...
+            </div>
+        </div>
+
+        <!-- Tab 2: Incident Clusters Container -->
+        <div class="feed-content" id="incident-clusters-list" style="display: none;">
+            <div class="empty-state">Loading active incident clusters...</div>
+        </div>
+    </div>
+</div>
+
+<!-- Bottom Analytics Deck: Chart.js Visualizations -->
+<section class="charts-grid">
+    <div class="chart-card">
+        <div class="card-title">
+            <i class="fa-solid fa-chart-area"></i> Event Frequency & Ingestion Timeline
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="timelineChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="card-title">
+            <i class="fa-solid fa-chart-pie"></i> Weather Event Distribution
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="categoryChart"></canvas>
+        </div>
+    </div>
+
+    <div class="chart-card">
+        <div class="card-title">
+            <i class="fa-solid fa-chart-bar"></i> Geographic Hotspots (Top Affected States)
+        </div>
+        <div class="chart-wrapper">
+            <canvas id="hotspotsChart"></canvas>
+        </div>
+    </div>
+</section>
+
+<!-- INSAT-3DR Satellite Weather Photo Intelligence Modal -->
+<div id="insat-photo-modal" class="modal-backdrop" style="display: none;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fa-solid fa-satellite" style="color:var(--accent-cyan);"></i> INSAT-3DR Geostationary Meteorological Satellite Imagery
+                <span class="badge-imd">ISRO / IMD SPACE OBSERVATION</span>
+            </div>
+            <button class="modal-close-btn" onclick="closeInsatModal()" aria-label="Close Modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="insat-photo-container">
+                <img src="{{ url_for('static', filename='img/insat_satellite_radar.jpg') }}" alt="INSAT-3DR High-Resolution Meteorological Satellite Weather Photo" class="insat-photo-img" id="insat-photo-view">
+                <div class="insat-overlay-hud">
+                    <div class="hud-tag"><i class="fa-solid fa-satellite-dish"></i> INSAT-3DR MULTI-SPECTRAL (1km VIS / 4km IR)</div>
+                    <div class="hud-tag hud-warning"><i class="fa-solid fa-hurricane"></i> ACTIVE CYCLONIC CIRCULATION: BAY OF BENGAL</div>
+                    <div class="hud-tag"><i class="fa-solid fa-circle-check"></i> LIVE PASS: SYNCHRONIZED</div>
+                </div>
+            </div>
+            <div class="insat-metadata-row">
+                <div class="insat-meta-item">
+                    <span class="insat-meta-label">Orbital Position</span>
+                    <span class="insat-meta-val">74.0° E Geostationary (INSAT-3DR)</span>
+                </div>
+                <div class="insat-meta-item">
+                    <span class="insat-meta-label">Primary Sensors</span>
+                    <span class="insat-meta-val">Multi-Spectral Imager (VIS, SWIR, TIR)</span>
+                </div>
+                <div class="insat-meta-item">
+                    <span class="insat-meta-label">Meteorological Target</span>
+                    <span class="insat-meta-val">Indian Subcontinent & Northern Indian Ocean</span>
+                </div>
+                <div class="insat-meta-item">
+                    <span class="insat-meta-label">Integration Status</span>
+                    <span class="insat-meta-val" style="color:var(--accent-emerald);"><i class="fa-solid fa-shield-check"></i> Ground Truth Correlated</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <a href="{{ url_for('static', filename='img/insat_satellite_radar.jpg') }}" download="INSAT3DR_Meteorological_Satellite_Photo.jpg" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-download"></i> Download Full-Res Photo
+            </a>
+            <button class="btn btn-primary btn-sm" onclick="closeInsatModal()">
+                Close
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}"></script>
+{% endblock %}

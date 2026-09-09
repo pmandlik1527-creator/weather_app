@@ -1,0 +1,31 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment variables & secrets
+.env
+.env.local
+*.local
+
+# Database & SQLite WAL files
+*.db
+*.db-shm
+*.db-wal
+weather_platform.db*
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Operating System files
+.DS_Store
+Thumbs.db

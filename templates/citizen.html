@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}Citizen Weather Reporting Desk | IMD MoES{% endblock %}
+
+{% block extra_css %}
+<style>
+.citizen-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.portal-hero {
+    text-align: center;
+    padding: 1.5rem 1rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(180deg, rgba(30, 58, 138, 0.25) 0%, rgba(17, 24, 39, 0) 100%);
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+.portal-hero h2 {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+}
+
+.portal-hero p {
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    max-width: 650px;
+    margin: 0 auto;
+}
+
+.form-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.75rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-lg);
+}
+
+.section-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.gps-box {
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px dashed var(--border-highlight);
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.gps-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.gps-status-text {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--accent-cyan);
+}
+
+.gps-coords {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.category-selection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.cat-card-opt {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.85rem 0.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.cat-card-opt i {
+    font-size: 1.5rem;
+    margin-bottom: 0.4rem;
+    display: block;
+    color: var(--accent-blue);
+}
+
+.cat-card-opt span {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.cat-card-opt:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cat-card-opt.selected {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--accent-blue);
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+.severity-slider-container {
+    margin-bottom: 1.5rem;
+}
+
+.severity-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.sev-mild { color: var(--accent-emerald); }
+.sev-mod { color: var(--accent-amber); }
+.sev-sev { color: #f97316; }
+.sev-ext { color: var(--accent-rose); }
+
+.photo-dropzone {
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    background: rgba(15, 23, 42, 0.4);
+    cursor: pointer;
+    transition: border-color 0.2s;
+    margin-bottom: 1.25rem;
+}
+
+.photo-dropzone:hover {
+    border-color: var(--accent-blue);
+}
+
+.sample-photos-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.sample-photo-btn {
+    font-size: 0.72rem;
+    padding: 0.25rem 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    color: var(--text-secondary);
+    cursor: pointer;
+}
+
+.sample-photo-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+.photo-preview-box {
+    margin-top: 0.8rem;
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.5rem;
+    border-radius: 6px;
+}
+
+.photo-preview-box img {
+    max-height: 80px;
+    border-radius: 4px;
+}
+
+.submission-receipt {
+    display: none;
+    background: rgba(16, 185, 129, 0.1);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    margin-top: 1.5rem;
+}
+
+.submission-receipt.show {
+    display: block;
+    animation: fadeIn 0.4s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="citizen-container">
+    <div class="portal-hero">
+        <h2><i class="fa-solid fa-cloud-bolt"></i> IMD Citizen Weather Intelligence Desk</h2>
+        <p>Your local ground observations directly empower India Meteorological Department meteorologists with real-time crowd-verified situational awareness during extreme weather events.</p>
+    </div>
+
+    <form id="citizen-report-form" class="form-card">
+        <!-- Section 1: Geolocation -->
+        <div class="section-title">
+            <i class="fa-solid fa-location-crosshairs"></i> 1. Location & Geotagging
+        </div>
+
+        <div class="gps-box">
+            <div class="gps-info">
+                <span class="gps-status-text" id="gps-display-status">GPS Not Acquired</span>
+                <span class="gps-coords" id="gps-coords-text">Click "Detect My GPS" to automatically lock your location</span>
+            </div>
+            <button type="button" id="btn-acquire-gps" class="btn btn-primary btn-sm">
+                <i class="fa-solid fa-crosshairs"></i> Detect My GPS
+            </button>
+        </div>
+
+        <div class="filter-row" style="margin-bottom: 1.25rem;">
+            <div class="filter-group" style="flex: 1;">
+                <span class="filter-label">City / District:</span>
+                <input type="text" id="input-city" name="city" class="form-input" style="width: 100%;" placeholder="e.g. Mumbai, Dadar, Bellandur" required>
+            </div>
+            <div class="filter-group" style="flex: 1;">
+                <span class="filter-label">State / UT:</span>
+                <select id="select-state" name="state" class="form-select" style="width: 100%;" required>
+                    <option value="">Select State</option>
+                    {% for st in states %}
+                    <option value="{{ st }}">{{ st }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- Hidden input for coords -->
+        <input type="hidden" id="input-latitude" name="latitude">
+        <input type="hidden" id="input-longitude" name="longitude">
+        <input type="hidden" id="input-category" name="category" value="Rainfall">
+        <input type="hidden" id="input-photo-url" name="photo_url" value="">
+
+        <!-- Section 2: Weather Event Category -->
+        <div class="section-title">
+            <i class="fa-solid fa-cloud-showers-heavy"></i> 2. Weather Event Phenomenon
+        </div>
+
+        <div class="category-selection-grid">
+            <div class="cat-card-opt selected" data-category="Rainfall">
+                <i class="fa-solid fa-cloud-rain"></i>
+                <span>Rainfall</span>
+            </div>
+            <div class="cat-card-opt" data-category="Flooding">
+                <i class="fa-solid fa-water"></i>
+                <span>Flooding</span>
+            </div>
+            <div class="cat-card-opt" data-category="Thunderstorm">
+                <i class="fa-solid fa-bolt"></i>
+                <span>Thunderstorm</span>
+            </div>
+            <div class="cat-card-opt" data-category="Heatwave">
+                <i class="fa-solid fa-temperature-high"></i>
+                <span>Heatwave</span>
+            </div>
+            <div class="cat-card-opt" data-category="Fog/Smog">
+                <i class="fa-solid fa-smog"></i>
+                <span>Fog / Smog</span>
+            </div>
+            <div class="cat-card-opt" data-category="Dust Storm">
+                <i class="fa-solid fa-wind"></i>
+                <span>Dust Storm</span>
+            </div>
+            <div class="cat-card-opt" data-category="Strong Winds">
+                <i class="fa-solid fa-tornado"></i>
+                <span>Strong Winds</span>
+            </div>
+            <div class="cat-card-opt" data-category="Hailstorm">
+                <i class="fa-solid fa-icicles"></i>
+                <span>Hailstorm</span>
+            </div>
+            <div class="cat-card-opt" data-category="Cyclone">
+                <i class="fa-solid fa-hurricane"></i>
+                <span>Cyclone</span>
+            </div>
+            <div class="cat-card-opt" data-category="Snowfall">
+                <i class="fa-solid fa-snowflake"></i>
+                <span>Snowfall</span>
+            </div>
+        </div>
+
+        <!-- Section 3: Event Severity -->
+        <div class="section-title">
+            <i class="fa-solid fa-gauge-high"></i> 3. Severity Level
+        </div>
+
+        <div class="severity-slider-container">
+            <input type="range" id="input-severity" name="severity" min="1" max="4" value="2" class="form-input" style="width: 100%;">
+            <div class="severity-labels">
+                <span class="sev-mild">1 - Mild / Light</span>
+                <span class="sev-mod">2 - Moderate</span>
+                <span class="sev-sev">3 - Severe</span>
+                <span class="sev-ext">4 - Extreme / Danger</span>
+            </div>
+        </div>
+
+        <!-- Section 4: Text Description -->
+        <div class="section-title">
+            <i class="fa-solid fa-pen-to-square"></i> 4. Weather Description & Observations
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+            <textarea id="input-description" name="description" rows="4" class="form-input" style="width: 100%; resize: vertical;" placeholder="Describe what you see: rainfall rate, water level in street, wind damage, visibility condition..." required></textarea>
+
+            <div style="margin-top: 0.4rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Quick tags:</span>
+                <button type="button" class="sample-photo-btn" onclick="addTag('#Waterlogging')">#Waterlogging</button>
+                <button type="button" class="sample-photo-btn" onclick="addTag('#HeavyRain')">#HeavyRain</button>
+                <button type="button" class="sample-photo-btn" onclick="addTag('#TrafficHalted')">#TrafficHalted</button>
+                <button type="button" class="sample-photo-btn" onclick="addTag('#ZeroVisibility')">#ZeroVisibility</button>
+                <button type="button" class="sample-photo-btn" onclick="addTag('#HailDamage')">#HailDamage</button>
+            </div>
+        </div>
+
+        <!-- Section 5: Photo / Media Evidence -->
+        <div class="section-title">
+            <i class="fa-solid fa-camera"></i> 5. Photo Verification Evidence
+        </div>
+
+        <div class="photo-dropzone" id="photo-dropzone">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 2rem; color: var(--accent-blue); margin-bottom: 0.5rem;"></i>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Click or Drag & Drop a photo taken from the spot</p>
+            <input type="file" id="file-photo" accept="image/*" style="display: none;">
+
+            <div class="sample-photos-row" style="justify-content: center;">
+                <span style="font-size: 0.72rem; color: var(--text-muted);">Or attach demo evidence:</span>
+                <button type="button" class="sample-photo-btn" onclick="setDemoPhoto('https://images.unsplash.com/photo-1515694346937-94d85e41e6f0?w=600')">Monsoon Flood Photo</button>
+                <button type="button" class="sample-photo-btn" onclick="setDemoPhoto('https://images.unsplash.com/photo-1605721911519-3dfeb3be25e7?w=600')">Storm Cloud Photo</button>
+                <button type="button" class="sample-photo-btn" onclick="setDemoPhoto('https://images.unsplash.com/photo-1491555103944-7c647fd857e6?w=600')">Hailstone Photo</button>
+            </div>
+        </div>
+
+        <div class="photo-preview-box" id="photo-preview-box">
+            <img id="img-preview" src="" alt="Photo Preview">
+            <div>
+                <strong style="font-size: 0.8rem; color: #fff;">Attached Weather Evidence</strong>
+                <p style="font-size: 0.72rem; color: var(--accent-emerald);">Ready for AI Verification Pipeline</p>
+            </div>
+        </div>
+
+        <!-- Section 6: Contributor Details -->
+        <div class="section-title">
+            <i class="fa-solid fa-user-check"></i> 6. Reporter Identity & Trust Tier
+        </div>
+
+        <div class="filter-row" style="margin-bottom: 1.5rem;">
+            <div class="filter-group" style="flex: 1;">
+                <span class="filter-label">Full Name / Handle:</span>
+                <input type="text" id="input-citizen-name" name="citizen_name" class="form-input" style="width: 100%;" placeholder="e.g. Rajesh Kumar" value="Citizen Observer">
+            </div>
+            <div class="filter-group" style="flex: 1;">
+                <span class="filter-label">Mobile / Email (for Verified Tier):</span>
+                <input type="text" id="input-citizen-contact" name="citizen_contact" class="form-input" style="width: 100%;" placeholder="+91 XXXXX XXXXX">
+            </div>
+        </div>
+
+        <button type="submit" id="btn-submit-report" class="btn btn-primary" style="width: 100%; padding: 0.85rem; font-size: 1rem;">
+            <i class="fa-solid fa-paper-plane"></i> Submit Ground Weather Report to IMD
+        </button>
+    </form>
+
+    <!-- Success Confirmation Receipt -->
+    <div class="submission-receipt" id="submission-receipt">
+        <i class="fa-solid fa-circle-check" style="font-size: 2.5rem; color: var(--accent-emerald); margin-bottom: 0.75rem;"></i>
+        <h3 style="color: #ffffff; font-size: 1.3rem; margin-bottom: 0.3rem;">Report Successfully Ingested!</h3>
+        <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+            Tracking UUID: <strong id="receipt-uuid" style="font-family: var(--font-mono); color: var(--accent-cyan);"></strong>
+        </p>
+        <p style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 1.25rem;">
+            Your report has been queued in the National Big Data Streaming Pipeline and analyzed by the AI Authenticity Engine.
+        </p>
+        <div style="display: flex; justify-content: center; gap: 0.75rem;">
+            <a href="/" class="btn btn-primary">
+                <i class="fa-solid fa-radar"></i> View on Operational Map
+            </a>
+            <button type="button" class="btn btn-secondary" onclick="resetFormForNew()">
+                <i class="fa-solid fa-plus"></i> Submit Another Report
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/citizen.js') }}"></script>
+{% endblock %}
