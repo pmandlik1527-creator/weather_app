@@ -56,6 +56,46 @@ class TestAPI(unittest.TestCase):
         me_after_data = json.loads(me_after_logout.data)
         self.assertFalse(me_after_data.get("authenticated"))
 
+    def test_officer_and_citizen_login(self):
+        """Verify seeded meteorologist officer and citizen accounts can authenticate."""
+        # Test officer login
+        off_res = self.app.post("/login", data={
+            "username": "officer",
+            "password": "Officer@123"
+        }, follow_redirects=True)
+        self.assertEqual(off_res.status_code, 200)
+
+        me_res = self.app.get("/api/auth/me")
+        me_data = json.loads(me_res.data)
+        self.assertTrue(me_data.get("authenticated"))
+        self.assertEqual(me_data.get("user", {}).get("role"), "meteorologist")
+        self.app.get("/logout")
+
+        # Test citizen login
+        cit_res = self.app.post("/login", data={
+            "username": "citizen",
+            "password": "Citizen@123"
+        }, follow_redirects=True)
+        self.assertEqual(cit_res.status_code, 200)
+
+        me_res = self.app.get("/api/auth/me")
+        me_data = json.loads(me_res.data)
+        self.assertTrue(me_data.get("authenticated"))
+        self.assertEqual(me_data.get("user", {}).get("role"), "citizen")
+        self.app.get("/logout")
+
+    def test_api_auth_login(self):
+        """Verify /api/auth/login endpoint for JSON/AJAX clients."""
+        res = self.app.post("/api/auth/login", json={
+            "username": "admin",
+            "password": "Admin@123"
+        })
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertTrue(data.get("success"))
+        self.assertEqual(data.get("user", {}).get("username"), "admin")
+        self.app.get("/logout")
+
     def test_citizen_registration(self):
         """Verify citizen registration and auto-login."""
         import uuid

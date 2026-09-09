@@ -11,6 +11,7 @@ import json
 from datetime import datetime, timedelta
 from functools import wraps
 from flask import Flask, render_template, request, jsonify, Response, send_file, session, redirect, url_for, flash
+from werkzeug.middleware.proxy_fix import ProxyFix
 import config
 from database.db import init_db
 from database.repository import (
@@ -44,8 +45,12 @@ from data.india_districts import (
 )
 
 app = Flask(__name__)
+# Enable ProxyFix so Flask respects HTTPS from reverse proxies like Render
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 app.config["SECRET_KEY"] = config.SECRET_KEY
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 # ==========================================
 # Authentication & Authorization Helpers
@@ -63,6 +68,19 @@ def inject_current_user():
     """Makes current_user available to all Jinja2 templates."""
     return {"current_user": get_current_user()}
 
+def sanitize_next_page(next_page):
+    """Sanitizes redirection target to avoid redirect loops and open redirects."""
+    if not next_page:
+        return None
+    cleaned = next_page.strip()
+    if cleaned.startswith("/login") or cleaned.startswith("/register") or cleaned.startswith("/logout"):
+        return None
+    if cleaned.startswith("//") or "://" in cleaned:
+        return None
+    if not cleaned.startswith("/"):
+        return None
+    return cleaned
+
 def login_required(f):
     """Decorator ensuring user is authenticated."""
     @wraps(f)
@@ -70,7 +88,8 @@ def login_required(f):
         if not session.get("user_id"):
             if request.path.startswith("/api/"):
                 return jsonify({"error": "Authentication required", "authenticated": False}), 401
-            return redirect(url_for("login_view", next=request.url))
+            target = request.full_path.rstrip("?") if request.full_path else request.path
+            return redirect(url_for("login_view", next=target))
         return f(*args, **kwargs)
     return decorated_function
 
@@ -83,7 +102,8 @@ def role_required(allowed_roles):
             if not user:
                 if request.path.startswith("/api/"):
                     return jsonify({"error": "Authentication required", "authenticated": False}), 401
-                return redirect(url_for("login_view", next=request.url))
+                target = request.full_path.rstrip("?") if request.full_path else request.path
+                return redirect(url_for("login_view", next=target))
             if user.get("role") not in allowed_roles:
                 if request.path.startswith("/api/"):
                     return jsonify({"error": "Forbidden: insufficient permissions"}), 403
@@ -149,8 +169,14 @@ def citizen_portal():
 @app.route("/login", methods=["GET", "POST"])
 def login_view():
     """Authentication portal for IMD Officers and Citizens."""
+    next_clean = sanitize_next_page(request.args.get("next"))
     if session.get("user_id"):
-        return redirect(request.args.get("next") or url_for("index"))
+        if next_clean:
+            return redirect(next_clean)
+        user = get_current_user()
+        if user and user.get("role") in ("admin", "meteorologist"):
+            return redirect(url_for("admin_panel"))
+        return redirect(url_for("index"))
 
     error = None
     tab = request.args.get("tab", "login")
@@ -167,9 +193,9 @@ def login_view():
             session["username"] = user["username"]
             session["role"] = user["role"]
             flash(f"Welcome back, {user['full_name']}!", "success")
-            next_page = request.args.get("next")
-            if next_page and not next_page.startswith("//") and not "://" in next_page:
-                return redirect(next_page)
+            
+            if next_clean:
+                return redirect(next_clean)
             if user["role"] in ("admin", "meteorologist"):
                 return redirect(url_for("admin_panel"))
             return redirect(url_for("index"))
@@ -181,7 +207,10 @@ def login_view():
 @app.route("/register", methods=["GET", "POST"])
 def register_view():
     """Registration portal for Citizens and Field Observers."""
+    next_clean = sanitize_next_page(request.args.get("next"))
     if session.get("user_id"):
+        if next_clean:
+            return redirect(next_clean)
         return redirect(url_for("index"))
 
     error = None
@@ -211,9 +240,8 @@ def register_view():
                 session["username"] = user["username"]
                 session["role"] = user["role"]
                 flash(f"Account created successfully! Welcome, {user['full_name']}.", "success")
-                next_page = request.args.get("next")
-                if next_page and not next_page.startswith("//") and not "://" in next_page:
-                    return redirect(next_page)
+                if next_clean:
+                    return redirect(next_clean)
                 return redirect(url_for("index"))
             except ValueError as ve:
                 error = str(ve)
@@ -228,6 +256,23 @@ def logout():
     session.clear()
     flash("You have been securely signed out.", "info")
     return redirect(url_for("index"))
+
+@app.route("/api/auth/login", methods=["POST"])
+def api_auth_login():
+    """API endpoint for JSON/AJAX authentication."""
+    data = request.get_json(silent=True) or request.form.to_dict()
+    identifier = (data.get("username") or data.get("email") or "").strip()
+    password = data.get("password", "")
+    remember = bool(data.get("remember", True))
+
+    user = authenticate_user(identifier, password)
+    if user:
+        session.permanent = remember
+        session["user_id"] = user["id"]
+        session["username"] = user["username"]
+        session["role"] = user["role"]
+        return jsonify({"success": True, "user": user, "message": "Authenticated successfully."})
+    return jsonify({"success": False, "error": "Invalid username or password."}), 401
 
 @app.route("/api/auth/me", methods=["GET"])
 def api_auth_me():

@@ -16,90 +16,129 @@
 
         <!-- Auth Tabs: Sign In vs Citizen Register -->
         <div class="auth-tabs">
-            <button type="button" class="auth-tab-btn {% if tab != 'register' %}active{% endif %}" onclick="switchAuthTab('login')">
+            <button type="button" class="auth-tab-btn {% if tab != 'register' %}active{% endif %}" id="tab-btn-signin" onclick="switchAuthTab('login')">
                 <i class="fa-solid fa-right-to-bracket"></i> Sign In
             </button>
-            <button type="button" class="auth-tab-btn {% if tab == 'register' %}active{% endif %}" onclick="switchAuthTab('register')">
+            <button type="button" class="auth-tab-btn {% if tab == 'register' %}active{% endif %}" id="tab-btn-signup" onclick="switchAuthTab('register')">
                 <i class="fa-solid fa-user-plus"></i> Citizen Register
             </button>
         </div>
 
         <!-- Error/Alert Banner -->
         {% if error %}
-        <div class="auth-alert auth-alert-error">
+        <div class="auth-alert auth-alert-error" id="auth-alert-banner">
             <i class="fa-solid fa-triangle-exclamation"></i>
             <span>{{ error }}</span>
         </div>
         {% endif %}
 
         <!-- Tab 1: Sign In Form -->
-        <form id="form-login" class="auth-form {% if tab == 'register' %}d-none{% endif %}" method="POST" action="{{ url_for('login_view', next=request.args.get('next')) }}">
+        <form id="form-login" class="auth-form" style="display: {% if tab == 'register' %}none{% else %}block{% endif %};" method="POST" action="{{ url_for('login_view', next=request.args.get('next')) }}">
             <div class="auth-field">
                 <label for="login-username"><i class="fa-solid fa-user"></i> Username or Email:</label>
-                <input type="text" id="login-username" name="username" class="form-input" placeholder="e.g. admin or officer@imd.gov.in" required autofocus>
+                <input type="text" id="login-username" name="username" class="form-input" placeholder="e.g. admin, officer, or citizen@imd.gov.in" required autofocus autocomplete="username">
             </div>
 
             <div class="auth-field">
                 <label for="login-password"><i class="fa-solid fa-lock"></i> Password:</label>
-                <input type="password" id="login-password" name="password" class="form-input" placeholder="Enter password" required>
+                <div class="auth-input-group">
+                    <input type="password" id="login-password" name="password" class="form-input" placeholder="Enter password" required autocomplete="current-password">
+                    <button type="button" class="btn-toggle-eye" onclick="togglePasswordVisibility('login-password', this)" title="Show/Hide Password">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
             </div>
 
             <div class="auth-remember-row">
                 <label class="remember-label">
-                    <input type="checkbox" name="remember" value="1" checked> Remember this device
+                    <input type="checkbox" name="remember" value="1" checked> Remember this device for 7 days
                 </label>
             </div>
 
-            <button type="submit" class="btn btn-primary btn-auth-submit">
+            <button type="submit" class="btn btn-primary btn-auth-submit" id="btn-login-submit">
                 <i class="fa-solid fa-shield-check"></i> Sign In to Platform
             </button>
 
-            <!-- Quick Demo Credentials Fill -->
+            <!-- Quick Demo Credentials Box -->
             <div class="demo-creds-box">
-                <div class="demo-creds-title"><i class="fa-solid fa-key"></i> Quick Demo Login (One-Click):</div>
+                <div class="demo-creds-title">
+                    <i class="fa-solid fa-bolt-lightning" style="color:var(--accent-amber);"></i> Quick Demo Login (Click to Sign In):
+                </div>
                 <div class="demo-creds-actions">
-                    <button type="button" class="btn-demo-chip" onclick="fillDemoCreds('admin', 'Admin@123')">
-                        <span class="chip-role">IMD Duty Officer (Admin)</span>
-                        <span class="chip-val">admin / Admin@123</span>
-                    </button>
+                    <!-- Admin -->
+                    <div class="demo-chip-card" onclick="fillAndSubmitDemoCreds('admin', 'Admin@123')">
+                        <div class="chip-info">
+                            <span class="chip-role chip-role-admin"><i class="fa-solid fa-user-shield"></i> IMD Duty Officer (Admin)</span>
+                            <span class="chip-val"><code>admin</code> / <code>Admin@123</code></span>
+                        </div>
+                        <button type="button" class="btn-chip-instant" title="Instant Sign In as Admin Officer">⚡ Instant Login</button>
+                    </div>
+
+                    <!-- Meteorologist -->
+                    <div class="demo-chip-card" onclick="fillAndSubmitDemoCreds('officer', 'Officer@123')">
+                        <div class="chip-info">
+                            <span class="chip-role chip-role-officer"><i class="fa-solid fa-cloud-bolt"></i> Meteorologist Specialist</span>
+                            <span class="chip-val"><code>officer</code> / <code>Officer@123</code></span>
+                        </div>
+                        <button type="button" class="btn-chip-instant" title="Instant Sign In as Meteorologist">⚡ Instant Login</button>
+                    </div>
+
+                    <!-- Citizen -->
+                    <div class="demo-chip-card" onclick="fillAndSubmitDemoCreds('citizen', 'Citizen@123')">
+                        <div class="chip-info">
+                            <span class="chip-role chip-role-citizen"><i class="fa-solid fa-users"></i> Citizen Observer</span>
+                            <span class="chip-val"><code>citizen</code> / <code>Citizen@123</code></span>
+                        </div>
+                        <button type="button" class="btn-chip-instant" title="Instant Sign In as Citizen">⚡ Instant Login</button>
+                    </div>
                 </div>
             </div>
         </form>
 
         <!-- Tab 2: Citizen Registration Form -->
-        <form id="form-register" class="auth-form {% if tab != 'register' %}d-none{% endif %}" method="POST" action="{{ url_for('register_view', next=request.args.get('next')) }}">
+        <form id="form-register" class="auth-form" style="display: {% if tab == 'register' %}block{% else %}none{% endif %};" method="POST" action="{{ url_for('register_view', next=request.args.get('next')) }}">
             <div class="auth-field">
-                <label for="reg-fullname"><i class="fa-solid fa-address-card"></i> Full Name:</label>
-                <input type="text" id="reg-fullname" name="full_name" class="form-input" placeholder="e.g. Rajesh Sharma" required>
+                <label for="reg-fullname"><i class="fa-solid fa-address-card"></i> Full Name *:</label>
+                <input type="text" id="reg-fullname" name="full_name" class="form-input" placeholder="e.g. Rajesh Sharma" required autocomplete="name">
             </div>
 
             <div class="auth-field">
-                <label for="reg-username"><i class="fa-solid fa-at"></i> Desired Username:</label>
-                <input type="text" id="reg-username" name="username" class="form-input" placeholder="e.g. rajesh_weather" required>
+                <label for="reg-username"><i class="fa-solid fa-at"></i> Desired Username *:</label>
+                <input type="text" id="reg-username" name="username" class="form-input" placeholder="e.g. rajesh_weather" required autocomplete="username">
             </div>
 
             <div class="auth-field">
-                <label for="reg-email"><i class="fa-solid fa-envelope"></i> Email Address:</label>
-                <input type="email" id="reg-email" name="email" class="form-input" placeholder="e.g. rajesh@example.com" required>
+                <label for="reg-email"><i class="fa-solid fa-envelope"></i> Email Address *:</label>
+                <input type="email" id="reg-email" name="email" class="form-input" placeholder="e.g. rajesh@example.com" required autocomplete="email">
             </div>
 
             <div class="auth-field-row">
                 <div class="auth-field">
-                    <label for="reg-password"><i class="fa-solid fa-lock"></i> Password:</label>
-                    <input type="password" id="reg-password" name="password" class="form-input" placeholder="Min. 6 chars" required minlength="6">
+                    <label for="reg-password"><i class="fa-solid fa-lock"></i> Password *:</label>
+                    <div class="auth-input-group">
+                        <input type="password" id="reg-password" name="password" class="form-input" placeholder="Min. 6 chars" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="btn-toggle-eye" onclick="togglePasswordVisibility('reg-password', this)">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="auth-field">
-                    <label for="reg-confirm"><i class="fa-solid fa-check-double"></i> Confirm Password:</label>
-                    <input type="password" id="reg-confirm" name="confirm_password" class="form-input" placeholder="Repeat password" required minlength="6">
+                    <label for="reg-confirm"><i class="fa-solid fa-check-double"></i> Confirm Password *:</label>
+                    <div class="auth-input-group">
+                        <input type="password" id="reg-confirm" name="confirm_password" class="form-input" placeholder="Repeat password" required minlength="6" autocomplete="new-password">
+                        <button type="button" class="btn-toggle-eye" onclick="togglePasswordVisibility('reg-confirm', this)">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <div class="auth-field">
                 <label for="reg-designation"><i class="fa-solid fa-building-user"></i> Affiliation / City (Optional):</label>
-                <input type="text" id="reg-designation" name="designation" class="form-input" placeholder="e.g. Citizen Meteorologist, Pune">
+                <input type="text" id="reg-designation" name="designation" class="form-input" placeholder="e.g. Citizen Observer, Pune">
             </div>
 
-            <button type="submit" class="btn btn-primary btn-auth-submit">
+            <button type="submit" class="btn btn-primary btn-auth-submit" id="btn-register-submit">
                 <i class="fa-solid fa-user-plus"></i> Create Citizen Account
             </button>
         </form>
@@ -117,25 +156,68 @@
 function switchAuthTab(tab) {
     const loginForm = document.getElementById("form-login");
     const regForm = document.getElementById("form-register");
-    const buttons = document.querySelectorAll(".auth-tab-btn");
+    const btnSignin = document.getElementById("tab-btn-signin");
+    const btnSignup = document.getElementById("tab-btn-signup");
 
     if (tab === "login") {
-        loginForm.classList.remove("d-none");
-        regForm.classList.add("d-none");
-        buttons[0].classList.add("active");
-        buttons[1].classList.remove("active");
+        if (loginForm) loginForm.style.display = "block";
+        if (regForm) regForm.style.display = "none";
+        if (btnSignin) btnSignin.classList.add("active");
+        if (btnSignup) btnSignup.classList.remove("active");
     } else {
-        loginForm.classList.add("d-none");
-        regForm.classList.remove("d-none");
-        buttons[0].classList.remove("active");
-        buttons[1].classList.add("active");
+        if (loginForm) loginForm.style.display = "none";
+        if (regForm) regForm.style.display = "block";
+        if (btnSignin) btnSignin.classList.remove("active");
+        if (btnSignup) btnSignup.classList.add("active");
+    }
+}
+
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const icon = btn.querySelector("i");
+    if (input.type === "password") {
+        input.type = "text";
+        if (icon) {
+            icon.classList.remove("fa-eye");
+            icon.classList.add("fa-eye-slash");
+        }
+    } else {
+        input.type = "password";
+        if (icon) {
+            icon.classList.remove("fa-eye-slash");
+            icon.classList.add("fa-eye");
+        }
     }
 }
 
 function fillDemoCreds(u, p) {
     switchAuthTab('login');
-    document.getElementById("login-username").value = u;
-    document.getElementById("login-password").value = p;
+    const uField = document.getElementById("login-username");
+    const pField = document.getElementById("login-password");
+    if (uField) uField.value = u;
+    if (pField) {
+        pField.value = p;
+        pField.focus();
+    }
 }
+
+function fillAndSubmitDemoCreds(u, p) {
+    fillDemoCreds(u, p);
+    const form = document.getElementById("form-login");
+    const btn = document.getElementById("btn-login-submit");
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Authenticating ${u}...`;
+    }
+    if (form) {
+        setTimeout(() => form.submit(), 120);
+    }
+}
+
+window.switchAuthTab = switchAuthTab;
+window.togglePasswordVisibility = togglePasswordVisibility;
+window.fillDemoCreds = fillDemoCreds;
+window.fillAndSubmitDemoCreds = fillAndSubmitDemoCreds;
 </script>
 {% endblock %}

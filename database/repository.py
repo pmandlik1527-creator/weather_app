@@ -556,11 +556,30 @@ def authenticate_user(identifier, password):
         return user_clean
     return None
 
+def ensure_default_user(username, email, password, full_name, role="citizen", designation=None):
+    """Ensures a user exists with the designated password hash and role."""
+    username = username.strip().lower()
+    email = email.strip().lower()
+    password_hash = generate_password_hash(password)
+    with db_cursor() as cur:
+        cur.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+        row = cur.fetchone()
+        if row:
+            cur.execute("""
+                UPDATE users
+                SET username = ?, email = ?, password_hash = ?, full_name = ?, role = ?, designation = ?
+                WHERE id = ?
+            """, (username, email, password_hash, full_name, role, designation or "", row["id"]))
+        else:
+            cur.execute("""
+                INSERT INTO users (username, email, password_hash, full_name, role, designation)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (username, email, password_hash, full_name, role, designation or ""))
+
 def seed_default_users():
-    """Initializes default administrative IMD officer account if users table is empty."""
+    """Initializes and ensures standard administrative, meteorologist, and citizen accounts exist."""
     conn = get_connection()
     cur = conn.cursor()
-    # Ensure users table exists in DB
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -577,15 +596,30 @@ def seed_default_users():
     cur.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
     conn.commit()
 
-    cur.execute("SELECT COUNT(*) as count FROM users")
-    count = cur.fetchone()["count"]
-    if count == 0:
-        create_user(
-            username="admin",
-            email="admin@imd.gov.in",
-            password="Admin@123",
-            full_name="IMD Duty Officer",
-            role="admin",
-            designation="National Meteorological Control Center"
-        )
-        print("[DB] Default IMD Administrator user seeded (admin / Admin@123).")
+    ensure_default_user(
+        username="admin",
+        email="admin@imd.gov.in",
+        password="Admin@123",
+        full_name="IMD Duty Officer",
+        role="admin",
+        designation="National Meteorological Control Center"
+    )
+
+    ensure_default_user(
+        username="officer",
+        email="officer@imd.gov.in",
+        password="Officer@123",
+        full_name="Dr. A. K. Mitra (Scientist 'F')",
+        role="meteorologist",
+        designation="IMD Weather Forecasting Division"
+    )
+
+    ensure_default_user(
+        username="citizen",
+        email="citizen@imd.gov.in",
+        password="Citizen@123",
+        full_name="Anand Kumar",
+        role="citizen",
+        designation="Citizen Weather Watcher, New Delhi"
+    )
+    print("[DB] Default IMD accounts seeded (admin, officer, citizen).")
