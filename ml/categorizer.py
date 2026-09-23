@@ -99,21 +99,63 @@ TRAINING_DATA = [
     ("Baraf pad rahi hai yahan Shimla Mall Road pe, tourists enjoying snowfall", "Snowfall"),
     ("Snow blizzard and sub-zero temperatures recorded across Ladakh and Spiti", "Snowfall"),
     ("Moderate snowfall underway at Badrinath and Kedarnath shrines", "Snowfall"),
-    ("First seasonal snowfall recorded at Rohtang Pass, roads closed", "Snowfall")
+    ("First seasonal snowfall recorded at Rohtang Pass, roads closed", "Snowfall"),
+
+    # Clear / Fair Weather
+    ("Clear sky and pleasant sunshine observed throughout the day", "Clear / Fair"),
+    ("Fair weather with gentle breeze and calm conditions", "Clear / Fair"),
+    ("Mainly clear sky with comfortable daytime temperatures", "Clear / Fair"),
+    ("Sunny weather, no rain or cloud cover reported across the district", "Clear / Fair"),
+    ("Dry and fair weather conditions prevail, pleasant evening", "Clear / Fair"),
+    ("Partly sunny with clear visibility and mild wind", "Clear / Fair"),
+    ("Normal seasonal conditions with clear blue skies", "Clear / Fair")
 ]
 
 # Rule-based meteorological keyword dictionaries for high-precision validation
 KEYWORD_RULES = {
-    "Flooding": [r"\bflood\b", r"\bflooded\b", r"\bflooding\b", r"\bwaterlogg\w*", r"\bunderpass\b", r"\bsubway\b", r"\bsubmerged\b", r"\binundat\w*", r"\bpani bhar\b", r"\bjala bharao\b", r"\bunderwater\b"],
-    "Hailstorm": [r"\bhail\b", r"\bhailstorm\b", r"\bhailstone\w*", r"\boley?\b", r"\bola gir\b"],
-    "Snowfall": [r"\bsnow\b", r"\bsnowfall\b", r"\bblizzard\b", r"\bbaraf\b", r"\bbarf\b", r"\bsnowing\b", r"\bavalanche\b"],
-    "Cyclone": [r"\bcyclone\b", r"\bcyclonic\b", r"\blandfall\b", r"\bchakravat\b", r"\bdeep depression\b", r"\btyphoon\b", r"\bhurricane\b"],
-    "Dust Storm": [r"\bdust storm\b", r"\bsandstorm\b", r"\baandhi\b", r"\bandhi\b", r"\bdust cloud\b"],
-    "Fog/Smog": [r"\bfog\b", r"\bsmog\b", r"\bkohra\b", r"\bvisibility\b", r"\bhaze\b", r"\baqi\b", r"\bmist\b"],
-    "Heatwave": [r"\bheatwave\b", r"\bheat wave\b", r"\bloo\b", r"\bscorching\b", r"\bgarmi\b", r"\bsunstroke\b", r"\b4[5-9]\s*°?c\b", r"\b5[0-2]\s*°?c\b"],
-    "Thunderstorm": [r"\bthunder\b", r"\blightning\b", r"\bt-storm\b", r"\bbijli\b", r"\bthunderstorm\b", r"\bcloudburst\b", r"\bbadal phat\b"],
-    "Strong Winds": [r"\bgale\b", r"\bsquall\b", r"\bgusts?\b", r"\bstrong winds?\b", r"\bhigh winds?\b", r"\btez hawa\b"],
-    "Rainfall": [r"\brain\b", r"\brainfall\b", r"\bdownpour\b", r"\bshower\b", r"\bshowers\b", r"\bdrizzle\b", r"\bbaarish\b", r"\bprecipitation\b", r"\bmonsoon\b"]
+    "Flooding": [
+        r"\bfloods?\b", r"\bflooding\b", r"\bflooded\b", r"\bflash flood\w*",
+        r"\bwaterlogg\w*", r"\bunderpass\b", r"\bsubway\b", r"\bsubmerged\b",
+        r"\binundat\w*", r"\bpani bhar\b", r"\bjala bharao\b", r"\bunderwater\b"
+    ],
+    "Hailstorm": [
+        r"\bhail\b", r"\bhailstorm\w*", r"\bhailstone\w*", r"\boley?\b", r"\bola gir\b"
+    ],
+    "Snowfall": [
+        r"\bsnow\w*", r"\bblizzard\w*", r"\bbaraf\b", r"\bbarf\b", r"\bsnowing\b", r"\bavalanche\w*"
+    ],
+    "Cyclone": [
+        r"\bcyclone\w*", r"\bcyclonic\b", r"\blandfall\b", r"\bchakravat\b",
+        r"\bdeep depression\b", r"\btyphoon\b", r"\bhurricane\b", r"\bdepression over\b"
+    ],
+    "Dust Storm": [
+        r"\bdust\s*storm\w*", r"\bsandstorm\w*", r"\baandhi\b", r"\bandhi\b", r"\bdust cloud\w*"
+    ],
+    "Fog/Smog": [
+        r"\bfog\w*", r"\bsmog\w*", r"\bkohra\b", r"\bvisibility\b", r"\bhaze\b", r"\baqi\b", r"\bmist\b", r"\bdense fog\b"
+    ],
+    "Heatwave": [
+        r"\bheat\s*waves?\b", r"\bloo\b", r"\bscorching\b", r"\bsunstroke\b",
+        r"\bextreme heat\b", r"\bheat stress\b", r"\bheat alert\b", r"\b4[5-9]\s*°?c\b", r"\b5[0-2]\s*°?c\b"
+    ],
+    "Thunderstorm": [
+        r"\bthunder\w*", r"\blightning\b", r"\bt-?storm\w*", r"\bbijli\b",
+        r"\bthunderstorm\w*", r"\bcloudburst\w*", r"\bbadal phat\b"
+    ],
+    "Strong Winds": [
+        r"\bgale\w*", r"\bsquall\w*", r"\bgusty?\s+winds?\b", r"\bstrong winds?\b",
+        r"\bhigh(-|\s+)speed winds?\b", r"\btez hawa\b"
+    ],
+    "Rainfall": [
+        r"\brains?\b", r"\braining\b", r"\brainy\b", r"\brainfall\b", r"\bdownpour\w*",
+        r"\bshowers?\b", r"\bdrizzle\w*", r"\bbaarish\b", r"\bprecipitation\b",
+        r"\bmonsoon\b", r"\bwet spell\b", r"\bred alert\b", r"\borange alert\b", r"\byellow alert\b"
+    ],
+    "Clear / Fair": [
+        r"\bclear sky\w*", r"\bmainly clear\b", r"\bfair weather\b", r"\bpleasant weather\b",
+        r"\bsunny\b", r"\bclear weather\b", r"\bcalm weather\b", r"\bpartly cloudy\b",
+        r"\bcloudy\b", r"\bovercast\b", r"\bdry weather\b"
+    ]
 }
 
 class WeatherCategorizer:
@@ -146,7 +188,7 @@ class WeatherCategorizer:
             }
         """
         if not text or not text.strip():
-            return {"category": "Rainfall", "confidence": 0.5, "method": "default", "scores": {}}
+            return {"category": "Clear / Fair", "confidence": 0.5, "method": "default", "scores": {}}
 
         clean_text = text.lower()
 
@@ -166,7 +208,7 @@ class WeatherCategorizer:
         hybrid_scores = {}
         for cat in self.categories:
             base_score = ml_scores.get(cat, 0.0)
-            rule_bonus = rule_matches.get(cat, 0) * 0.45
+            rule_bonus = rule_matches.get(cat, 0) * 2.0
             hybrid_scores[cat] = base_score + rule_bonus
 
         # Normalize scores to 0-1
@@ -175,6 +217,14 @@ class WeatherCategorizer:
 
         best_category = max(normalized_scores, key=normalized_scores.get)
         confidence = normalized_scores[best_category]
+
+        # Safety Guard: Severe disaster classes must have rule match or high ML confidence
+        severe_classes = {"Heatwave", "Cyclone", "Flooding", "Hailstorm", "Snowfall", "Dust Storm"}
+        if best_category in severe_classes and not rule_matches.get(best_category) and confidence < 0.45:
+            # Revert spurious classification to Clear / Fair
+            best_category = "Clear / Fair"
+            confidence = 0.60
+            normalized_scores["Clear / Fair"] = 0.60
 
         return {
             "category": best_category,

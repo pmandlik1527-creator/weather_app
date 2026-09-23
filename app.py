@@ -32,7 +32,9 @@ from database.repository import (
 from ingestion.stream_manager import stream_pipeline
 from ingestion.social_connector import social_connector
 from ingestion.open_weather import open_weather_connector
+from ingestion.google_weather import google_weather_connector
 from ingestion.citizen_handler import citizen_handler
+from ingestion.live_scraper import live_scraper
 from ml.feedback import feedback_manager
 from seed import seed_database
 from data.india_districts import (
@@ -51,6 +53,8 @@ app.config["SECRET_KEY"] = config.SECRET_KEY
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=7)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["TEMPLATES_AUTO_RELOAD"] = True
 
 # ==========================================
 # Authentication & Authorization Helpers
@@ -113,10 +117,11 @@ def role_required(allowed_roles):
         return decorated_function
     return decorator
 
-# Ensure DB is seeded on app startup
+# Ensure DB is seeded on app startup and pipelines are running
 try:
     seed_database()
     stream_pipeline.start()
+    live_scraper.start()
 except Exception as e:
     print(f"[STARTUP WARN] {e}")
 
@@ -130,7 +135,7 @@ def index():
     summary = get_analytics_summary()
     initial_state = request.args.get("state", "Maharashtra")
     initial_district = request.args.get("district") or request.args.get("city", "Pune")
-    initial_weather = open_weather_connector.get_live_weather(
+    initial_weather = google_weather_connector.get_live_weather(
         state_name=initial_state,
         district_name=initial_district
     )
@@ -433,6 +438,25 @@ def api_sync_live_imd():
         "posts": posts
     })
 
+@app.route("/api/scrape/live-sync", methods=["GET", "POST"])
+def api_scrape_live_sync():
+    """Triggers an immediate live scraping cycle and returns fresh real reports."""
+    force = request.args.get("force", "true").lower() in ("true", "1", "yes")
+    scraped = live_scraper.scrape_once() if force else []
+    return jsonify({
+        "success": True,
+        "scraped_count": len(scraped),
+        "reports": scraped,
+        "last_scraped_at": live_scraper.last_scraped_at,
+        "interval_seconds": live_scraper.interval,
+        "is_active": live_scraper.is_running
+    })
+
+@app.route("/api/scrape/status", methods=["GET"])
+def api_scrape_status():
+    """Returns 30-second live scraper operational status."""
+    return jsonify(live_scraper.get_status())
+
 @app.route("/api/social/ingest", methods=["POST"])
 def api_ingest_custom_post():
     """Allows ingesting and classifying an arbitrary custom Tweet / social post."""
@@ -468,20 +492,99 @@ def api_live_weather():
     city = request.args.get("city")
     lat_val = request.args.get("lat")
     lon_val = request.args.get("lon")
+    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
 
     lat = float(lat_val) if lat_val else None
     lon = float(lon_val) if lon_val else None
 
-    data = open_weather_connector.get_live_weather(
+    data = google_weather_connector.get_live_weather(
         city_name=city,
         lat=lat,
         lon=lon,
         state_name=state,
-        district_name=district
+        district_name=district,
+        force_refresh=force
     )
     if not data:
         return jsonify({"error": "Unable to fetch live weather telemetry."}), 502
     return jsonify({"success": True, "data": data})
+
+@app.route("/api/weather/provider", methods=["GET"])
+def api_weather_provider():
+    """Returns active meteorological engine and Google Maps Platform connection status."""
+    has_key = google_weather_connector.is_configured
+    provider_mode = config.WEATHER_PROVIDER
+    is_free = (provider_mode == "free" or not has_key)
+    return jsonify({
+        "success": True,
+        "configured_provider": provider_mode,
+        "is_free_tier": is_free,
+        "cost": "Rs. 0.00 (100% Free & Unlimited)",
+        "has_google_key": has_key,
+        "active_primary": "Free Live Meteorological Network (Open-Meteo & IMD Radar)" if is_free else "Google Maps Platform Weather API",
+        "solution_id": config.GMP_SOLUTION_ID
+    })
+
+@app.route("/api/weather/set-key", methods=["POST"])
+def api_weather_set_key():
+    """Enables setting or updating Google Maps Platform API key / Maps Demo Key at runtime."""
+    data = request.get_json(silent=True) or request.form
+    key = (data.get("key") or "").strip()
+    if not key:
+        return jsonify({"success": False, "error": "API Key is required."}), 400
+
+    # Verify key against Google Maps Platform Weather API
+    import requests
+    test_url = f"https://weather.googleapis.com/v1/currentConditions:lookup?location.latitude=18.5204&location.longitude=73.8567&key={key}&solution_id={config.GMP_SOLUTION_ID}"
+    headers = {"X-Goog-Maps-Solution-ID": config.GMP_SOLUTION_ID}
+    try:
+        r = requests.get(test_url, headers=headers, timeout=5.0)
+        if r.status_code == 200:
+            config.GOOGLE_MAPS_API_KEY = key
+            config.WEATHER_PROVIDER = "google"
+            # Update .env
+            env_path = config.BASE_DIR / ".env"
+            if env_path.exists():
+                content = env_path.read_text(encoding="utf-8")
+                import re
+                if re.search(r"^GOOGLE_MAPS_API_KEY=.*$", content, re.MULTILINE):
+                    content = re.sub(r"^GOOGLE_MAPS_API_KEY=.*$", f"GOOGLE_MAPS_API_KEY={key}", content, flags=re.MULTILINE)
+                else:
+                    content += f"\nGOOGLE_MAPS_API_KEY={key}\n"
+                content = re.sub(r"^WEATHER_PROVIDER=.*$", "WEATHER_PROVIDER=google", content, flags=re.MULTILINE)
+                env_path.write_text(content, encoding="utf-8")
+            return jsonify({
+                "success": True,
+                "message": "Google Maps Platform Weather API key verified and activated successfully!",
+                "provider": "Google Maps Weather API"
+            })
+        else:
+            err_msg = r.json().get("error", {}).get("message", "API verification failed")
+    except Exception as e:
+        return jsonify({"success": False, "error": f"Connection error verifying key: {e}"}), 500
+
+@app.route("/api/weather/reverse-geocode", methods=["GET"])
+def api_weather_reverse_geocode():
+    """Reverse-geocodes user's live GPS coordinates to nearest Indian state and district."""
+    lat_val = request.args.get("lat")
+    lon_val = request.args.get("lon")
+    if not lat_val or not lon_val:
+        return jsonify({"success": False, "error": "lat and lon query params required."}), 400
+    try:
+        lat = float(lat_val)
+        lon = float(lon_val)
+        from data.india_districts import find_nearest_district
+        state, district, dist_km = find_nearest_district(lat, lon)
+        return jsonify({
+            "success": True,
+            "state": state,
+            "district": district,
+            "latitude": lat,
+            "longitude": lon,
+            "distance_km": dist_km
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 400
 
 @app.route("/api/weather/states", methods=["GET"])
 def api_weather_states():
@@ -501,7 +604,8 @@ def api_weather_states():
 def api_weather_state_summary():
     """Returns live weather overview for all districts in a given state."""
     state = request.args.get("state", "Maharashtra")
-    districts_weather = open_weather_connector.get_state_districts_weather(state)
+    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
+    districts_weather = google_weather_connector.get_state_districts_weather(state, force_refresh=force)
     return jsonify({
         "success": True,
         "state": state,
@@ -512,13 +616,15 @@ def api_weather_state_summary():
 @app.route("/api/weather/ticker", methods=["GET"])
 def api_weather_ticker():
     """Returns live conditions across key Indian hub cities for the top ticker strip."""
-    ticker_data = open_weather_connector.get_live_ticker_feed()
+    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
+    ticker_data = google_weather_connector.get_live_ticker_feed(force_refresh=force)
     return jsonify({"success": True, "ticker": ticker_data})
 
 @app.route("/api/weather/stations", methods=["GET"])
 def api_weather_stations():
     """Returns real-time observations for all Indian stations for map overlay."""
-    stations = open_weather_connector.get_all_live_stations()
+    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
+    stations = google_weather_connector.get_all_live_stations(force_refresh=force)
     return jsonify({"success": True, "stations": stations})
 
 

@@ -4,7 +4,46 @@ Ministry of Earth Sciences | India Meteorological Department
 Master Stylesheet - Modern Enterprise Weather Command Interface
 */
 
-:root, body.dark-theme, [data-theme="dark"] {
+:root, body.light-theme, body.cream-theme, [data-theme="light"], [data-theme="cream"] {
+    --bg-primary: #f5efe6;           /* Rich, distinct warm executive cream canvas */
+    --bg-secondary: #ebdccb;         /* Warm biscuit/cream stone */
+    --bg-card: #fdfbf7;              /* Crisp elevated warm ivory card */
+    --bg-card-hover: #f7f1e6;        /* Subtle warm card hover */
+    --bg-header: rgba(245, 239, 230, 0.96); /* Warm cream header with glassmorphism */
+    --bg-input: #ffffff;             /* Crisp clean input fields */
+    --border-color: #dfd3c3;         /* Warm cream stone border */
+    --border-highlight: rgba(37, 99, 235, 0.45);
+
+    --text-primary: #292524;         /* Rich warm charcoal (Stone 800) */
+    --text-secondary: #57534e;       /* Warm stone secondary (Stone 600) */
+    --text-muted: #78716c;           /* Warm granite (Stone 500) */
+    --text-heading: #1c1917;         /* Deep warm ink (Stone 900) */
+    --shadow-card: 0 2px 10px -1px rgba(60, 45, 30, 0.08), 0 1px 3px rgba(60, 45, 30, 0.04);
+    --map-popup-bg: #ffffff;
+    --map-popup-text: #1c1917;
+    --card-item-bg: #eee6d8;         /* Warm cream container tint */
+    --card-item-hover: #e6dcce;      /* Hover state on containers */
+    --table-header-bg: #ebdccb;      /* Warm stone table headers */
+
+    --accent-blue: #2563eb;
+    --accent-cyan: #0284c7;
+    --accent-indigo: #4f46e5;
+    --accent-emerald: #059669;
+    --accent-amber: #d97706;
+    --accent-rose: #e11d48;
+    --accent-orange: #ff9933; /* Saffron */
+    --accent-green: #138808;  /* India Green */
+
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --shadow-sm: 0 1px 2px 0 rgba(60, 45, 30, 0.05);
+    --shadow-md: 0 4px 10px -1px rgba(60, 45, 30, 0.09), 0 2px 4px -1px rgba(60, 45, 30, 0.04);
+    --shadow-lg: 0 12px 24px -3px rgba(60, 45, 30, 0.12), 0 4px 8px -2px rgba(60, 45, 30, 0.05);
+    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.15);
+}
+
+body.dark-theme, [data-theme="dark"] {
     --bg-primary: #0a0f1d;
     --bg-secondary: #111827;
     --bg-card: rgba(17, 24, 39, 0.85);
@@ -31,43 +70,13 @@ Master Stylesheet - Modern Enterprise Weather Command Interface
     --accent-emerald: #10b981;
     --accent-amber: #f59e0b;
     --accent-rose: #f43f5e;
-    --accent-orange: #ff9933; /* Saffron */
-    --accent-green: #138808;  /* India Green */
-
-    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
+    --accent-orange: #ff9933;
+    --accent-green: #138808;
 
     --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.2), 0 2px 4px -1px rgba(0, 0, 0, 0.1);
     --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
     --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.25);
-}
-
-body.light-theme, [data-theme="light"] {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #e2e8f0;
-    --bg-card: #ffffff;
-    --bg-card-hover: #f1f5f9;
-    --bg-header: rgba(255, 255, 255, 0.96);
-    --bg-input: #ffffff;
-    --border-color: #e2e8f0;
-    --border-highlight: rgba(37, 99, 235, 0.45);
-
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --text-muted: #64748b;
-    --text-heading: #0f172a;
-    --shadow-card: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
-    --map-popup-bg: rgba(255, 255, 255, 0.98);
-    --map-popup-text: #0f172a;
-    --card-item-bg: #f8fafc;
-    --card-item-hover: #f1f5f9;
-    --table-header-bg: #f1f5f9;
-
-    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --shadow-glow: 0 0 20px rgba(37, 99, 235, 0.15);
 }
 
 * {
@@ -117,13 +126,16 @@ body.dark-theme .theme-icon-dark { display: inline-block; color: #facc15; }
 body.light-theme .theme-icon-dark { display: none; }
 body.light-theme .theme-icon-light { display: inline-block; color: #ea580c; }
 
-body.light-theme .theme-toggle-btn {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-    color: #0f172a;
+body.light-theme .theme-toggle-btn, body.cream-theme .theme-toggle-btn {
+    background: #eeeae0;
+    border-color: #dfd8cb;
+    color: #1a1c1e;
+    box-shadow: 0 1px 2px rgba(35, 25, 15, 0.05);
 }
-body.light-theme .theme-toggle-btn:hover {
-    background: #e2e8f0;
+body.light-theme .theme-toggle-btn:hover, body.cream-theme .theme-toggle-btn:hover {
+    background: #e5dfd3;
+    border-color: #2563eb;
+    color: #1d4ed8;
 }
 
 /* Tiranga National Accent Bar */
@@ -293,6 +305,122 @@ body.light-theme .theme-toggle-btn:hover {
 
 .divider-v {
     color: var(--text-muted);
+}
+
+/* 30-Second Live Scrape & Auto-Refresh Header Pill */
+.live-sync-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--card-item-bg);
+    border: 1px solid var(--border-color);
+    padding: 0.35rem 0.8rem;
+    border-radius: 20px;
+    font-family: var(--font-mono);
+    font-size: 0.76rem;
+    color: var(--text-secondary);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    transition: all 0.25s ease;
+}
+
+.live-sync-pill:hover {
+    border-color: var(--accent-blue);
+}
+
+.live-sync-dot {
+    width: 8px;
+    height: 8px;
+    background-color: var(--accent-cyan);
+    border-radius: 50%;
+    display: inline-block;
+    box-shadow: 0 0 8px var(--accent-cyan);
+    animation: liveSyncGlow 2s infinite ease-in-out;
+}
+
+@keyframes liveSyncGlow {
+    0% { transform: scale(0.9); opacity: 0.7; }
+    50% { transform: scale(1.15); opacity: 1; box-shadow: 0 0 12px var(--accent-cyan); }
+    100% { transform: scale(0.9); opacity: 0.7; }
+}
+
+.live-sync-label {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--text-heading);
+    font-size: 0.72rem;
+}
+
+.live-sync-timer {
+    font-weight: 700;
+    color: var(--accent-blue);
+    min-width: 26px;
+    text-align: center;
+    background: rgba(59, 130, 246, 0.12);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.btn-sync-spin {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.82rem;
+    transition: all 0.2s ease;
+}
+
+.btn-sync-spin:hover {
+    color: var(--accent-blue);
+    transform: rotate(45deg);
+}
+
+.btn-sync-spin.spinning i {
+    animation: fa-spin 0.8s linear infinite;
+    color: var(--accent-blue);
+}
+
+/* Floating Real-time Scrape Toast Alert */
+.live-toast-alert {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--bg-card);
+    border: 1.5px solid var(--accent-emerald);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12), 0 0 15px rgba(16, 185, 129, 0.15);
+    border-radius: 10px;
+    padding: 0.75rem 1.25rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-heading);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 10050;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.live-toast-alert.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Subtle animation on newly scraped feed cards */
+.feed-card-fresh {
+    animation: freshCardFlash 1.5s ease-out;
+}
+
+@keyframes freshCardFlash {
+    0% { border-color: var(--accent-emerald); box-shadow: 0 0 15px rgba(16, 185, 129, 0.4); background: rgba(16, 185, 129, 0.08); }
+    100% { border-color: var(--border-color); box-shadow: none; }
 }
 
 /* Main Layout */
@@ -710,6 +838,7 @@ body.light-theme .theme-toggle-btn:hover {
 .cat-Hailstorm { background: rgba(6, 182, 212, 0.2); color: #22d3ee; }
 .cat-Cyclone { background: rgba(225, 29, 72, 0.25); color: #fb7185; }
 .cat-Snowfall { background: rgba(241, 245, 249, 0.2); color: #f8fafc; }
+.cat-Clear-Fair, .cat-Clear---Fair, .cat-Clear { background: rgba(16, 185, 129, 0.2); color: #34d399; }
 
 .report-text {
     font-size: 0.82rem;
@@ -804,8 +933,8 @@ body.light-theme .theme-toggle-btn:hover {
 body.dark-theme .leaflet-container {
     background-color: #0b1120 !important;
 }
-body.light-theme .leaflet-container {
-    background-color: #f1f5f9 !important;
+body.light-theme .leaflet-container, body.cream-theme .leaflet-container {
+    background-color: #f6f3ec !important;
 }
 
 .custom-map-popup .leaflet-popup-content-wrapper {
@@ -849,58 +978,59 @@ body.light-theme .leaflet-container {
     justify-content: space-between;
 }
 
-/* Light Theme Component Tweaks */
-body.light-theme .admin-table th {
-    background: #f1f5f9;
-    color: #334155;
-    border-bottom: 1px solid #cbd5e1;
+/* Light / Cream Theme Component Tweaks */
+body.light-theme .admin-table th, body.cream-theme .admin-table th {
+    background: #f0ebe1;
+    color: #38342e;
+    border-bottom: 1px solid #dfd8cb;
 }
-body.light-theme .admin-table td {
-    border-bottom: 1px solid #e2e8f0;
-    color: #0f172a;
+body.light-theme .admin-table td, body.cream-theme .admin-table td {
+    border-bottom: 1px solid #e8e2d8;
+    color: #2d3137;
 }
-body.light-theme .admin-table tr:hover {
-    background: #f8fafc;
+body.light-theme .admin-table tr:hover, body.cream-theme .admin-table tr:hover {
+    background: #f8f5ee;
 }
-body.light-theme .gps-box {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+body.light-theme .gps-box, body.cream-theme .gps-box {
+    background: #f8f5ee;
+    border-color: #dfd8cb;
 }
-body.light-theme .cat-card-opt {
-    background: #f8fafc;
-    border-color: #e2e8f0;
-    color: #0f172a;
+body.light-theme .cat-card-opt, body.cream-theme .cat-card-opt {
+    background: #f8f5ee;
+    border-color: #e5dfd3;
+    color: #1a1c1e;
 }
-body.light-theme .cat-card-opt:hover {
-    background: #f1f5f9;
-    border-color: #94a3b8;
+body.light-theme .cat-card-opt:hover, body.cream-theme .cat-card-opt:hover {
+    background: #ffffff;
+    border-color: #2563eb;
 }
-body.light-theme .cat-card-opt.selected {
-    background: rgba(59, 130, 246, 0.12);
+body.light-theme .cat-card-opt.selected, body.cream-theme .cat-card-opt.selected {
+    background: rgba(37, 99, 235, 0.1);
     border-color: #2563eb;
     color: #1d4ed8;
 }
-body.light-theme .photo-dropzone {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+body.light-theme .photo-dropzone, body.cream-theme .photo-dropzone {
+    background: #f8f5ee;
+    border-color: #dfd8cb;
+    color: var(--text-secondary);
 }
-body.light-theme .sample-photo-btn {
-    background: #e2e8f0;
-    color: #334155;
-    border-color: #cbd5e1;
+body.light-theme .sample-photo-btn, body.cream-theme .sample-photo-btn {
+    background: #f0ebe1;
+    color: #38342e;
+    border-color: #dfd8cb;
 }
-body.light-theme .sample-photo-btn:hover {
-    background: #cbd5e1;
-    color: #0f172a;
+body.light-theme .sample-photo-btn:hover, body.cream-theme .sample-photo-btn:hover {
+    background: #e2dcd2;
+    color: #1a1c1e;
 }
-body.light-theme .feedback-banner {
-    background: linear-gradient(90deg, #eff6ff, #ecfeff);
-    border-color: #93c5fd;
+body.light-theme .feedback-banner, body.cream-theme .feedback-banner {
+    background: linear-gradient(90deg, #eff6ff, #fbf7f0);
+    border-color: #bfdbfe;
 }
-body.light-theme .feedback-banner h4 {
+body.light-theme .feedback-banner h4, body.cream-theme .feedback-banner h4 {
     color: #1e3a8a !important;
 }
-body.light-theme .feedback-banner p {
+body.light-theme .feedback-banner p, body.cream-theme .feedback-banner p {
     color: #334155 !important;
 }
 
@@ -915,6 +1045,8 @@ body.light-theme .cat-Strong-Winds { background: rgba(99, 102, 241, 0.15); color
 body.light-theme .cat-Hailstorm { background: rgba(6, 182, 212, 0.15); color: #0e7490; }
 body.light-theme .cat-Cyclone { background: rgba(225, 29, 72, 0.15); color: #be123c; }
 body.light-theme .cat-Snowfall { background: rgba(100, 116, 139, 0.18); color: #1e293b; }
+body.light-theme .cat-Clear-Fair, body.light-theme .cat-Clear---Fair, body.light-theme .cat-Clear,
+body.cream-theme .cat-Clear-Fair, body.cream-theme .cat-Clear---Fair, body.cream-theme .cat-Clear { background: rgba(16, 185, 129, 0.15); color: #047857; }
 
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
@@ -961,10 +1093,10 @@ body.light-theme ::-webkit-scrollbar-thumb:hover {
     transition: all 0.25s ease;
 }
 
-body.light-theme .satellite-preview-strip {
-    background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);
-    border-color: rgba(56, 189, 248, 0.4);
-    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.08);
+body.light-theme .satellite-preview-strip, body.cream-theme .satellite-preview-strip {
+    background: linear-gradient(135deg, #ffffff 0%, #faf6ee 100%);
+    border-color: #e2dcd2;
+    box-shadow: 0 4px 15px rgba(35, 25, 15, 0.05);
 }
 
 .satellite-preview-strip:hover {
@@ -1153,6 +1285,14 @@ body.light-theme .sat-pill-alert {
     animation: scaleModal 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+body.light-theme .modal-backdrop, body.cream-theme .modal-backdrop {
+    background: rgba(30, 25, 20, 0.55);
+}
+
+body.light-theme .modal-dialog, body.cream-theme .modal-dialog {
+    box-shadow: 0 20px 50px rgba(35, 25, 15, 0.18), 0 0 20px rgba(37, 99, 235, 0.08);
+}
+
 @keyframes scaleModal {
     from { transform: scale(0.95); opacity: 0; }
     to { transform: scale(1); opacity: 1; }
@@ -1305,10 +1445,10 @@ body.light-theme .sat-pill-alert {
     user-select: none;
 }
 
-body.light-theme .live-weather-ticker-wrap {
-    background: linear-gradient(90deg, #e0f2fe 0%, #f8fafc 50%, #e0f2fe 100%);
-    border-bottom: 1px solid rgba(56, 189, 248, 0.35);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.05);
+body.light-theme .live-weather-ticker-wrap, body.cream-theme .live-weather-ticker-wrap {
+    background: linear-gradient(90deg, #f4efe5 0%, #faf8f3 50%, #f4efe5 100%);
+    border-bottom: 1px solid #e2dcd2;
+    box-shadow: 0 1px 4px rgba(35, 25, 15, 0.04);
 }
 
 .ticker-badge {
@@ -1328,10 +1468,10 @@ body.light-theme .live-weather-ticker-wrap {
     z-index: 2;
 }
 
-body.light-theme .ticker-badge {
-    background: rgba(14, 165, 233, 0.15);
-    color: #0284c7;
-    border-right-color: rgba(56, 189, 248, 0.3);
+body.light-theme .ticker-badge, body.cream-theme .ticker-badge {
+    background: #2563eb;
+    color: #ffffff;
+    border-right-color: #1d4ed8;
 }
 
 .ticker-pulse-dot {
@@ -1394,10 +1534,10 @@ body.light-theme .ticker-badge {
     transition: all 0.2s ease;
 }
 
-body.light-theme .ticker-city-chip {
+body.light-theme .ticker-city-chip, body.cream-theme .ticker-city-chip {
     background: #ffffff;
-    border-color: rgba(203, 213, 225, 0.8);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    border-color: #e5dfd3;
+    box-shadow: 0 1px 3px rgba(35, 25, 15, 0.04);
 }
 
 .ticker-city-chip:hover {
@@ -1416,8 +1556,8 @@ body.light-theme .ticker-city-chip {
     color: #38bdf8;
 }
 
-body.light-theme .ticker-city-chip .t-temp {
-    color: #0284c7;
+body.light-theme .ticker-city-chip .t-temp, body.cream-theme .ticker-city-chip .t-temp {
+    color: #1d4ed8;
 }
 
 .ticker-city-chip .t-emoji {
@@ -1436,9 +1576,9 @@ body.light-theme .ticker-city-chip .t-temp {
     border-radius: 4px;
 }
 
-body.light-theme .ticker-city-chip .t-meta {
-    background: #f1f5f9;
-    color: #475569;
+body.light-theme .ticker-city-chip .t-meta, body.cream-theme .ticker-city-chip .t-meta {
+    background: #f0ebe1;
+    color: #5a626f;
 }
 
 .ticker-sync-btn {
@@ -1471,10 +1611,10 @@ body.light-theme .ticker-city-chip .t-meta {
     backdrop-filter: blur(10px);
 }
 
-body.light-theme .live-weather-panel-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border-color: rgba(56, 189, 248, 0.3);
-    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06);
+body.light-theme .live-weather-panel-card, body.cream-theme .live-weather-panel-card {
+    background: linear-gradient(135deg, #ffffff 0%, #faf6f0 100%);
+    border-color: #e2dcd2;
+    box-shadow: 0 4px 18px rgba(35, 25, 15, 0.05);
 }
 
 .live-weather-header {
@@ -1488,8 +1628,8 @@ body.light-theme .live-weather-panel-card {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-body.light-theme .live-weather-header {
-    border-bottom-color: #e2e8f0;
+body.light-theme .live-weather-header, body.cream-theme .live-weather-header {
+    border-bottom-color: #e5dfd3;
 }
 
 .live-weather-title-group {
@@ -1524,9 +1664,10 @@ body.light-theme .live-weather-header {
     border-radius: 4px;
 }
 
-body.light-theme .badge-station-live {
-    background: rgba(14, 165, 233, 0.12);
-    color: #0284c7;
+body.light-theme .badge-station-live, body.cream-theme .badge-station-live {
+    background: rgba(37, 99, 235, 0.1);
+    color: #1d4ed8;
+    border-color: rgba(37, 99, 235, 0.3);
 }
 
 .live-weather-controls {
@@ -1579,9 +1720,9 @@ body.light-theme .badge-station-live {
     flex-direction: column;
 }
 
-body.light-theme .hero-left {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
+body.light-theme .hero-left, body.cream-theme .hero-left {
+    background: #f6f3ec;
+    border-color: #e5dfd3;
 }
 
 .hero-station-name {
@@ -1653,10 +1794,10 @@ body.light-theme .hero-left {
     transition: transform 0.2s ease, border-color 0.2s ease;
 }
 
-body.light-theme .metric-tile {
+body.light-theme .metric-tile, body.cream-theme .metric-tile {
     background: #ffffff;
-    border-color: #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+    border-color: #e5dfd3;
+    box-shadow: 0 1px 3px rgba(35, 25, 15, 0.04);
 }
 
 .metric-tile:hover {
@@ -1713,9 +1854,9 @@ body.light-theme .metric-tile {
     padding: 0.75rem 1rem;
 }
 
-body.light-theme .hourly-forecast-deck {
-    background: #f8fafc;
-    border-color: #e2e8f0;
+body.light-theme .hourly-forecast-deck, body.cream-theme .hourly-forecast-deck {
+    background: #f6f3ec;
+    border-color: #e5dfd3;
 }
 
 .hourly-forecast-label {
@@ -1751,9 +1892,9 @@ body.light-theme .hourly-forecast-deck {
     transition: all 0.2s ease;
 }
 
-body.light-theme .hourly-pill {
+body.light-theme .hourly-pill, body.cream-theme .hourly-pill {
     background: #ffffff;
-    border-color: #e2e8f0;
+    border-color: #e5dfd3;
 }
 
 .hourly-pill:hover {
@@ -1839,10 +1980,10 @@ body.light-theme .hourly-pill {
     transition: all 0.2s ease;
 }
 
-body.light-theme .user-profile-badge {
+body.light-theme .user-profile-badge, body.cream-theme .user-profile-badge {
     background: #ffffff;
-    border-color: rgba(203, 213, 225, 0.8);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    border-color: #e5dfd3;
+    box-shadow: 0 1px 4px rgba(35, 25, 15, 0.05);
 }
 
 .user-avatar-circle {
@@ -1940,14 +2081,14 @@ body.light-theme .user-profile-badge {
     box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
 }
 
-body.light-theme .btn-user-login {
-    background: #0284c7;
+body.light-theme .btn-user-login, body.cream-theme .btn-user-login {
+    background: #2563eb;
     color: #ffffff;
-    border-color: #0284c7;
+    border-color: #1d4ed8;
 }
 
-body.light-theme .btn-user-login:hover {
-    background: #0369a1;
+body.light-theme .btn-user-login:hover, body.cream-theme .btn-user-login:hover {
+    background: #1d4ed8;
 }
 
 /* Global Flash Banners */
@@ -2033,10 +2174,10 @@ body.light-theme .btn-user-login:hover {
     backdrop-filter: blur(12px);
 }
 
-body.light-theme .auth-card {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border-color: rgba(56, 189, 248, 0.35);
-    box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
+body.light-theme .auth-card, body.cream-theme .auth-card {
+    background: linear-gradient(135deg, #ffffff 0%, #faf8f4 100%);
+    border-color: #e2dcd2;
+    box-shadow: 0 10px 35px rgba(35, 25, 15, 0.08);
 }
 
 .auth-header {
@@ -2082,8 +2223,9 @@ body.light-theme .auth-card {
     margin-bottom: 1.5rem;
 }
 
-body.light-theme .auth-tabs {
-    background: #e2e8f0;
+body.light-theme .auth-tabs, body.cream-theme .auth-tabs {
+    background: #eee8de;
+    border: 1px solid #ded7cb;
 }
 
 .auth-tab-btn {
@@ -2227,9 +2369,9 @@ body.light-theme .demo-creds-box {
     text-align: left;
 }
 
-body.light-theme .btn-demo-chip {
-    background: #f8fafc;
-    border-color: #cbd5e1;
+body.light-theme .btn-demo-chip, body.cream-theme .btn-demo-chip {
+    background: #ffffff;
+    border-color: #e5dfd3;
 }
 
 .btn-demo-chip:hover {
@@ -2244,8 +2386,8 @@ body.light-theme .btn-demo-chip {
     color: #38bdf8;
 }
 
-body.light-theme .chip-role {
-    color: #0284c7;
+body.light-theme .chip-role, body.cream-theme .chip-role {
+    color: #1d4ed8;
 }
 
 .chip-val {
@@ -2316,10 +2458,10 @@ body.light-theme .control-tiny-label {
     animation: fadeInRadar 0.3s ease-in-out;
 }
 
-body.light-theme .state-district-radar-deck {
+body.light-theme .state-district-radar-deck, body.cream-theme .state-district-radar-deck {
     background: #ffffff;
-    border-color: #cbd5e1;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+    border-color: #e2dcd2;
+    box-shadow: 0 4px 15px rgba(35, 25, 15, 0.05);
 }
 
 @keyframes fadeInRadar {
@@ -2336,8 +2478,8 @@ body.light-theme .state-district-radar-deck {
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-body.light-theme .radar-deck-header {
-    border-bottom-color: #e2e8f0;
+body.light-theme .radar-deck-header, body.cream-theme .radar-deck-header {
+    border-bottom-color: #e5dfd3;
 }
 
 .radar-deck-title {
@@ -2380,16 +2522,16 @@ body.light-theme .radar-deck-header {
     gap: 0.35rem;
 }
 
-body.light-theme .district-weather-card {
-    background: #f8fafc;
-    border-color: #e2e8f0;
+body.light-theme .district-weather-card, body.cream-theme .district-weather-card {
+    background: #f8f6f0;
+    border-color: #e5dfd3;
 }
 
 .district-weather-card:hover {
     transform: translateY(-2px);
-    border-color: #38bdf8;
-    background: rgba(56, 189, 248, 0.1);
-    box-shadow: 0 4px 12px rgba(56, 189, 248, 0.15);
+    border-color: #2563eb;
+    background: rgba(37, 99, 235, 0.06);
+    box-shadow: 0 4px 12px rgba(35, 25, 15, 0.08);
 }
 
 .dw-card-top {
@@ -2425,8 +2567,8 @@ body.light-theme .district-weather-card {
     font-family: 'JetBrains Mono', monospace;
 }
 
-body.light-theme .dw-temp {
-    color: #0284c7;
+body.light-theme .dw-temp, body.cream-theme .dw-temp {
+    color: #1d4ed8;
 }
 
 .dw-desc {
@@ -2443,9 +2585,9 @@ body.light-theme .dw-temp {
     border-top: 1px dashed rgba(255, 255, 255, 0.08);
 }
 
-body.light-theme .dw-card-bottom {
-    border-top-color: #e2e8f0;
-    color: #64748b;
+body.light-theme .dw-card-bottom, body.cream-theme .dw-card-bottom {
+    border-top-color: #e5dfd3;
+    color: #7e8794;
 }
 
 .district-loading-placeholder, .district-empty-msg {
@@ -2913,3 +3055,103 @@ body.light-theme .dw-card-bottom {
     justify-content: center;
     gap: 0.45rem;
 }
+
+body.light-theme .demo-creds-box, body.cream-theme .demo-creds-box {
+    background: #f8f6f0;
+    border-color: #dfd8cb;
+}
+
+body.light-theme .demo-chip-card, body.cream-theme .demo-chip-card {
+    background: #ffffff;
+    border-color: #e5dfd3;
+}
+
+body.light-theme .demo-chip-card:hover, body.cream-theme .demo-chip-card:hover {
+    background: #faf8f4;
+    border-color: #2563eb;
+}
+
+body.light-theme .chip-val code, body.cream-theme .chip-val code {
+    background: #eee8de;
+    color: #1a1c1e;
+}
+
+/* Multi-Platform Social & Bulletin Badges */
+.platform-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.18rem 0.55rem;
+    border-radius: 9999px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    line-height: 1.2;
+}
+
+.platform-twitter {
+    background: rgba(29, 155, 240, 0.15);
+    color: #38bdf8;
+    border: 1px solid rgba(56, 189, 248, 0.35);
+}
+
+.platform-instagram {
+    background: rgba(225, 48, 108, 0.15);
+    color: #f43f5e;
+    border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.platform-google {
+    background: rgba(66, 133, 244, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.35);
+}
+
+.platform-thirdparty {
+    background: rgba(245, 158, 11, 0.15);
+    color: #fbbf24;
+    border: 1px solid rgba(251, 191, 36, 0.35);
+}
+
+.platform-mastodon {
+    background: rgba(99, 100, 255, 0.15);
+    color: #a78bfa;
+    border: 1px solid rgba(167, 139, 250, 0.35);
+}
+
+.platform-meteo {
+    background: rgba(16, 185, 129, 0.15);
+    color: #34d399;
+    border: 1px solid rgba(52, 211, 153, 0.35);
+}
+
+.platform-citizen {
+    background: rgba(6, 182, 212, 0.15);
+    color: #22d3ee;
+    border: 1px solid rgba(34, 211, 238, 0.35);
+}
+
+.live-source-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #38bdf8;
+    text-decoration: none;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    background: rgba(56, 189, 248, 0.1);
+    border: 1px solid rgba(56, 189, 248, 0.25);
+    transition: all 0.18s ease;
+}
+
+.live-source-link:hover {
+    background: rgba(56, 189, 248, 0.25);
+    color: #ffffff;
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+

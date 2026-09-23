@@ -62,7 +62,8 @@ const CATEGORY_STYLES = {
     "Strong Winds": { color: "#6366f1", icon: "fa-tornado" },
     "Hailstorm": { color: "#06b6d4", icon: "fa-icicles" },
     "Cyclone": { color: "#e11d48", icon: "fa-hurricane" },
-    "Snowfall": { color: "#e2e8f0", icon: "fa-snowflake" }
+    "Snowfall": { color: "#e2e8f0", icon: "fa-snowflake" },
+    "Clear / Fair": { color: "#10b981", icon: "fa-sun" }
 };
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -79,10 +80,8 @@ document.addEventListener("DOMContentLoaded", () => {
         setMapBasemap(theme);
     });
 
-    // Periodic live feed refresh
-    setInterval(() => {
-        loadDashboardData(true);
-    }, 4000);
+    // Expose loadDashboardData globally so the 30-second live scraper triggers synchronized refreshes
+    window.loadDashboardData = loadDashboardData;
 });
 
 function setMapStyle(styleKey) {
@@ -242,7 +241,7 @@ async function loadDashboardData(isBackgroundPoll = false) {
             if (cCountEl) cCountEl.textContent = currentClusters.length;
         }
 
-        if (summaryRes.ok && !isBackgroundPoll) {
+        if (summaryRes.ok) {
             const sdata = await summaryRes.json();
             updateKPIs(sdata);
             if (typeof updateChartsWithData === "function") {
@@ -252,6 +251,26 @@ async function loadDashboardData(isBackgroundPoll = false) {
     } catch (err) {
         console.error("Dashboard sync error:", err);
     }
+}
+
+function formatPlatformBadge(sourceType) {
+    const st = (sourceType || "twitter").toLowerCase();
+    if (st === "twitter" || st === "x") {
+        return `<span class="platform-badge platform-twitter"><i class="fa-brands fa-x-twitter"></i> X / Twitter</span>`;
+    } else if (st === "instagram") {
+        return `<span class="platform-badge platform-instagram"><i class="fa-brands fa-instagram"></i> Instagram</span>`;
+    } else if (st === "google_news" || st === "news") {
+        return `<span class="platform-badge platform-google"><i class="fa-brands fa-google"></i> Google News</span>`;
+    } else if (st === "third_party_app") {
+        return `<span class="platform-badge platform-thirdparty"><i class="fa-solid fa-cloud-bolt"></i> Skymet / App</span>`;
+    } else if (st === "mastodon") {
+        return `<span class="platform-badge platform-mastodon"><i class="fa-brands fa-mastodon"></i> Mastodon</span>`;
+    } else if (st === "open_meteo") {
+        return `<span class="platform-badge platform-meteo"><i class="fa-solid fa-satellite-dish"></i> AWS Station</span>`;
+    } else if (st === "citizen") {
+        return `<span class="platform-badge platform-citizen"><i class="fa-solid fa-user-group"></i> Citizen Desk</span>`;
+    }
+    return `<span class="platform-badge"><i class="fa-solid fa-satellite"></i> ${sourceType.toUpperCase()}</span>`;
 }
 
 function renderMarkers(reports) {
@@ -275,11 +294,17 @@ function renderMarkers(reports) {
 
             const authClass = r.is_fake ? "auth-fake" : (r.authenticity_score > 75 ? "auth-high" : "auth-medium");
             const authText = r.is_fake ? "FLAGGED FAKE / HOAX" : `${r.authenticity_score}% AUTHENTIC`;
+            const platformBadge = formatPlatformBadge(r.source_type);
+            const sourceLinkHtml = r.source_url ? `
+                <a href="${r.source_url}" target="_blank" rel="noopener noreferrer" class="live-source-link" title="Open live report source">
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Post
+                </a>
+            ` : '';
 
             const popupContent = `
                 <div class="popup-inner">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                        <span class="report-category-badge cat-${r.detected_category.replace('/', '-')}">
+                        <span class="report-category-badge cat-${(r.detected_category || 'Clear-Fair').replace(/[\s\/]+/g, '-')}">
                             ${r.detected_category} (${Math.round(r.category_confidence * 100)}%)
                         </span>
                         <span class="authenticity-badge ${authClass}" style="font-size:0.75rem;">
@@ -290,14 +315,20 @@ function renderMarkers(reports) {
                     <p class="popup-desc">${r.raw_text}</p>
                     ${mediaHtml}
                     ${reasonsHtml ? `<div style="margin-top:6px;">${reasonsHtml}</div>` : ''}
-                    <div class="popup-meta" style="margin-top:8px;">
-                        <span><i class="fa-solid fa-user"></i> ${r.author_handle} (${r.source_type})</span>
-                        <span>${formatRelativeTime(r.timestamp)}</span>
+                    <div class="popup-meta" style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px;">
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            ${platformBadge}
+                            <span><i class="fa-solid fa-user"></i> ${r.author_handle}</span>
+                        </div>
+                        <div style="display:flex;align-items:center;gap:6px;">
+                            ${sourceLinkHtml}
+                            <span>${formatRelativeTime(r.timestamp)}</span>
+                        </div>
                     </div>
                 </div>
             `;
 
-            marker.bindPopup(popupContent, { className: "custom-map-popup", maxWidth: 320 });
+            marker.bindPopup(popupContent, { className: "custom-map-popup", maxWidth: 330 });
             marker.reportId = r.id;
             markersLayer.addLayer(marker);
 
@@ -339,6 +370,12 @@ function renderLiveFeed(reports) {
         const cardClass = r.is_fake ? "card-fake" : (r.verification_status === "verified" ? "card-verified" : "card-unverified");
         const authClass = r.is_fake ? "auth-fake" : (r.authenticity_score > 75 ? "auth-high" : "auth-medium");
         const authText = r.is_fake ? "FAKE" : `${Math.round(r.authenticity_score)}%`;
+        const platformBadge = formatPlatformBadge(r.source_type);
+        const sourceLinkHtml = r.source_url ? `
+            <a href="${r.source_url}" target="_blank" rel="noopener noreferrer" class="live-source-link" onclick="event.stopPropagation();" title="View live post on ${r.source_type}">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i> Open Post
+            </a>
+        ` : '';
 
         return `
             <div class="report-card ${cardClass}" onclick="panToReport(${r.latitude}, ${r.longitude}, ${r.id})">
@@ -349,7 +386,7 @@ function renderLiveFeed(reports) {
                     <span class="timestamp-pill">${formatRelativeTime(r.timestamp)}</span>
                 </div>
                 <div>
-                    <span class="report-category-badge cat-${r.detected_category.replace('/', '-')}">
+                    <span class="report-category-badge cat-${(r.detected_category || 'Clear-Fair').replace(/[\s\/]+/g, '-')}">
                         ${r.detected_category}
                     </span>
                     <span style="font-size:0.75rem;color:var(--text-secondary);font-weight:600;margin-left:4px;">
@@ -358,7 +395,10 @@ function renderLiveFeed(reports) {
                 </div>
                 <p class="report-text">${r.raw_text}</p>
                 <div class="report-footer">
-                    <span><i class="fa-solid fa-satellite"></i> ${r.source_type.toUpperCase()}</span>
+                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        ${platformBadge}
+                        ${sourceLinkHtml}
+                    </div>
                     <span class="authenticity-badge ${authClass}">
                         <i class="fa-solid ${r.is_fake ? 'fa-triangle-exclamation' : 'fa-shield'}"></i> Authenticity: ${authText}
                     </span>
@@ -716,23 +756,40 @@ document.addEventListener("click", (e) => {
 // Real-Time Live Meteorological Ground Station Controller
 // ====================================================================
 
-async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null, state = null, district = null) {
+let districtsMap = {};
+
+async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null, state = null, district = null, isAutoRefresh = false) {
     const displayEl = document.getElementById("live-weather-display");
     if (!displayEl) return;
+
+    // Load districtsMap if empty
+    if (Object.keys(districtsMap).length === 0) {
+        const dataEl = document.getElementById("districts-data");
+        if (dataEl) {
+            try { districtsMap = JSON.parse(dataEl.textContent); } catch(e) {}
+        }
+    }
 
     try {
         let url = "/api/weather/live?";
         if (state && district) {
             url += `state=${encodeURIComponent(state)}&district=${encodeURIComponent(district)}`;
+            if (lat !== null && lon !== null && lat !== undefined && lon !== undefined) {
+                url += `&lat=${lat}&lon=${lon}`;
+            }
+        } else if (lat !== null && lon !== null && lat !== undefined && lon !== undefined) {
+            url += `lat=${lat}&lon=${lon}`;
+            if (district) url += `&district=${encodeURIComponent(district)}`;
+            if (state) url += `&state=${encodeURIComponent(state)}`;
         } else if (district) {
             url += `district=${encodeURIComponent(district)}`;
+            if (state) url += `&state=${encodeURIComponent(state)}`;
         } else if (city) {
             url += `city=${encodeURIComponent(city)}`;
-        } else if (lat !== null && lon !== null) {
-            url += `lat=${lat}&lon=${lon}`;
         } else {
             url += "state=Maharashtra&district=Pune";
         }
+        url += `&force=true&_t=${Date.now()}`;
 
         const res = await fetch(url);
         if (!res.ok) throw new Error("Station offline or network error");
@@ -753,11 +810,13 @@ async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null, s
         const pressEl = document.getElementById("lw-pressure");
         const catEl = document.getElementById("lw-category");
         const hourlyStrip = document.getElementById("lw-hourly-strip");
+        const providerBadge = document.getElementById("lw-provider-badge");
 
         if (stationEl) stationEl.textContent = `${data.city}, ${data.state}`;
-        if (timeEl) timeEl.innerHTML = `<span class="live-sensor-dot"></span> Live Telemetry &bull; Ground Station Sensor (${data.latitude.toFixed(2)}°N, ${data.longitude.toFixed(2)}°E)`;
+        if (providerBadge && data.provider) providerBadge.textContent = data.provider.toUpperCase();
+        if (timeEl) timeEl.innerHTML = `<span class="live-sensor-dot"></span> Live Telemetry &bull; ${data.provider || 'Google Weather API'} (${data.latitude.toFixed(2)}°N, ${data.longitude.toFixed(2)}°E)`;
         if (tempEl) tempEl.textContent = `${data.temperature}°`;
-        if (descEl) descEl.innerHTML = `${data.emoji} <strong>${data.condition_desc}</strong> &bull; Ground Truth Sensor`;
+        if (descEl) descEl.innerHTML = `${data.emoji} <strong>${data.condition_desc}</strong> &bull; ${data.provider_detail || 'Hyperlocal Telemetry'}`;
         if (iconEl) iconEl.className = `fa-solid ${data.icon} hero-weather-icon`;
         if (feelsEl) feelsEl.textContent = `${data.apparent_temperature}°C`;
         if (humidEl) humidEl.textContent = `${data.humidity}%`;
@@ -778,20 +837,38 @@ async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null, s
             `).join("");
         }
 
-        // Fly map to the selected district and add active station marker
-        if (map && data.latitude && data.longitude) {
+        // Fly map only on user interaction or first load, NOT during background 30s refresh
+        if (map && data.latitude && data.longitude && !isAutoRefresh) {
             map.flyTo([data.latitude, data.longitude], 8, { duration: 1.0 });
         }
 
-        // Keep dropdowns in sync
+        // Keep dropdowns in sync without dispatching events
         const stateSelect = document.getElementById("live-weather-state-select");
         const distSelect = document.getElementById("live-weather-district-select");
         if (stateSelect && data.state && stateSelect.value !== data.state) {
             stateSelect.value = data.state;
-            stateSelect.dispatchEvent(new Event("change"));
+            const dists = districtsMap[data.state] || [];
+            if (distSelect && dists.length > 0) {
+                distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
+            }
         }
         if (distSelect && data.city) {
-            distSelect.value = data.city;
+            for (let i = 0; i < distSelect.options.length; i++) {
+                const optVal = distSelect.options[i].value.toLowerCase();
+                const cityVal = data.city.toLowerCase();
+                if (optVal === cityVal || cityVal.includes(optVal) || optVal.includes(cityVal)) {
+                    distSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        // Persist active state and district in browser storage
+        if (data.state && data.city) {
+            try {
+                localStorage.setItem("nwbdap_selected_state", data.state);
+                localStorage.setItem("nwbdap_selected_district", data.city);
+            } catch (e) {}
         }
 
     } catch (err) {
@@ -822,8 +899,12 @@ function initLiveWeatherCard() {
             if (distSelect) {
                 distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
                 if (dists.length > 0) {
-                    distSelect.value = dists[0];
-                    fetchAndDisplayLiveWeather(dists[0], null, null, state, dists[0]);
+                    let chosenDist = dists[0];
+                    if (state === "Maharashtra" && dists.includes("Pune")) {
+                        chosenDist = "Pune";
+                    }
+                    distSelect.value = chosenDist;
+                    fetchAndDisplayLiveWeather(chosenDist, null, null, state, chosenDist);
                 }
             }
             if (radarDeck && radarDeck.style.display !== "none") {
@@ -846,44 +927,144 @@ function initLiveWeatherCard() {
             if (!val) return;
             const parts = val.split(",");
             const targetDist = parts[0].trim();
-            const targetState = parts.length > 1 ? parts[1].trim() : null;
+            let targetState = parts.length > 1 ? parts[1].trim() : null;
+
+            // Intelligent auto-resolution if only district was typed (e.g. "Pune")
+            if (!targetState) {
+                for (const [st, dList] of Object.entries(districtsMap)) {
+                    if (dList.some(d => d.toLowerCase() === targetDist.toLowerCase())) {
+                        targetState = st;
+                        break;
+                    }
+                }
+            }
 
             if (targetState && stateSelect) {
                 stateSelect.value = targetState;
                 const dists = districtsMap[targetState] || [];
                 if (distSelect) {
                     distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
-                    distSelect.value = targetDist;
+                    for (let i = 0; i < distSelect.options.length; i++) {
+                        if (distSelect.options[i].value.toLowerCase() === targetDist.toLowerCase()) {
+                            distSelect.selectedIndex = i;
+                            break;
+                        }
+                    }
                 }
             }
-            fetchAndDisplayLiveWeather(targetDist, null, null, targetState, targetDist);
+            const activeDist = distSelect ? distSelect.value : targetDist;
+            const activeState = stateSelect ? stateSelect.value : (targetState || "Maharashtra");
+            fetchAndDisplayLiveWeather(activeDist, null, null, activeState, activeDist);
             searchInput.value = "";
         });
     }
 
-    if (detectBtn) {
-        detectBtn.addEventListener("click", () => {
-            if (!navigator.geolocation) {
-                alert("Geolocation is not supported by your browser.");
-                return;
-            }
+    // High-Accuracy Live GPS Location Detection
+    async function acquireUserLocation(isAuto = false) {
+        if (!navigator.geolocation) {
+            if (!isAuto) alert("Geolocation is not supported by your browser.");
+            return;
+        }
+
+        if (detectBtn) {
             detectBtn.disabled = true;
-            detectBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> GPS...`;
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const lat = pos.coords.latitude;
-                    const lon = pos.coords.longitude;
+            detectBtn.innerHTML = `<i class="fa-solid fa-satellite-dish fa-spin"></i> Locating...`;
+        }
+
+        const geoOptions = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
+        navigator.geolocation.getCurrentPosition(
+            async (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+                const accuracy = Math.round(pos.coords.accuracy || 0);
+
+                try {
+                    // Reverse-geocode coordinates to identify local Indian district & state
+                    const rgRes = await fetch(`/api/weather/reverse-geocode?lat=${lat}&lon=${lon}`);
+                    const rgData = await rgRes.json();
+
+                    const resolvedDistrict = rgData.success ? rgData.district : null;
+                    const resolvedState = rgData.success ? rgData.state : null;
+
+                    // Fetch and render live weather for exact GPS coordinates
+                    await fetchAndDisplayLiveWeather(
+                        resolvedDistrict,
+                        lat,
+                        lon,
+                        resolvedState,
+                        resolvedDistrict
+                    );
+
+                    if (detectBtn) {
+                        detectBtn.classList.remove("btn-primary");
+                        detectBtn.classList.add("btn-success");
+                        detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> GPS (${accuracy}m)`;
+                        detectBtn.title = `High-Accuracy GPS Active (±${accuracy}m precision)`;
+                    }
+
+                    // Annotate hero banner with GPS precision
+                    const timeEl = document.getElementById("lw-timestamp");
+                    if (timeEl) {
+                        timeEl.innerHTML = `<span class="live-sensor-dot" style="background:#10b981;box-shadow:0 0 10px #10b981;"></span> Live GPS Telemetry &bull; Exact Position (${lat.toFixed(4)}°N, ${lon.toFixed(4)}°E &bull; ±${accuracy}m)`;
+                    }
+                } catch (e) {
+                    console.error("[GPS ERROR]", e);
                     fetchAndDisplayLiveWeather(null, lat, lon);
-                    detectBtn.disabled = false;
-                    detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> GPS`;
-                },
-                (err) => {
-                    alert("Could not acquire GPS position: " + err.message);
+                } finally {
+                    if (detectBtn) detectBtn.disabled = false;
+                }
+            },
+            async (err) => {
+                console.warn("[GPS RETRIEVAL FAILED]", err.message);
+
+                // Fallback: Automatic IP Geolocation if GPS permission denied or timed out
+                try {
+                    const ipRes = await fetch("https://ipapi.co/json/", { cache: "no-store" });
+                    if (ipRes.ok) {
+                        const ipData = await ipRes.json();
+                        if (ipData.city) {
+                            await fetchAndDisplayLiveWeather(
+                                ipData.city,
+                                ipData.latitude,
+                                ipData.longitude,
+                                ipData.region,
+                                ipData.city
+                            );
+                            if (detectBtn) {
+                                detectBtn.innerHTML = `<i class="fa-solid fa-network-wired"></i> IP Loc`;
+                                detectBtn.title = `Network Location: ${ipData.city}, ${ipData.region}`;
+                            }
+                            return;
+                        }
+                    }
+                } catch (ipErr) {
+                    console.warn("[IP FALLBACK FAILED]", ipErr);
+                }
+
+                if (!isAuto) {
+                    alert("Could not acquire GPS position: " + err.message + "\nTip: Please enable location permissions in your browser.");
+                }
+                if (detectBtn) {
                     detectBtn.disabled = false;
                     detectBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> GPS`;
                 }
-            );
-        });
+            },
+            geoOptions
+        );
+    }
+
+    if (detectBtn) {
+        detectBtn.addEventListener("click", () => acquireUserLocation(false));
+    }
+
+    // Auto-prompt location on first session visit if no preference stored
+    if (!localStorage.getItem("nwbdap_selected_district") && navigator.geolocation) {
+        setTimeout(() => acquireUserLocation(true), 800);
     }
 
     if (refreshBtn) {
@@ -925,8 +1106,29 @@ function initLiveWeatherCard() {
         });
     }
 
-    const initSt = stateSelect ? stateSelect.value : "Maharashtra";
-    const initDist = distSelect ? distSelect.value : "Pune";
+    // Restore user's last selected state and district from localStorage
+    let initSt = stateSelect ? stateSelect.value : "Maharashtra";
+    let initDist = distSelect ? distSelect.value : "Pune";
+    try {
+        const savedState = localStorage.getItem("nwbdap_selected_state");
+        const savedDistrict = localStorage.getItem("nwbdap_selected_district");
+        if (savedState && districtsMap[savedState]) {
+            initSt = savedState;
+            if (stateSelect) stateSelect.value = savedState;
+            const dists = districtsMap[savedState] || [];
+            if (distSelect && dists.length > 0) {
+                distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
+                if (savedDistrict && dists.includes(savedDistrict)) {
+                    initDist = savedDistrict;
+                    distSelect.value = savedDistrict;
+                } else {
+                    initDist = dists[0];
+                    distSelect.value = dists[0];
+                }
+            }
+        }
+    } catch (e) {}
+
     fetchAndDisplayLiveWeather(initDist, null, null, initSt, initDist);
 }
 
@@ -942,7 +1144,7 @@ async function loadStateDistrictRadar(stateName) {
     gridEl.innerHTML = `<div class="district-loading-placeholder"><i class="fa-solid fa-satellite-dish fa-spin"></i> Querying ground telemetry across all districts in ${stateName}...</div>`;
 
     try {
-        const res = await fetch(`/api/weather/state-summary?state=${encodeURIComponent(stateName)}`);
+        const res = await fetch(`/api/weather/state-summary?state=${encodeURIComponent(stateName)}&force=true&_t=${Date.now()}`);
         if (!res.ok) throw new Error("Could not fetch state summary");
         const json = await res.json();
         const districts = json.districts || [];
@@ -981,11 +1183,12 @@ async function loadStateDistrictRadar(stateName) {
 window.selectDistrictFromRadar = function(state, district, lat, lon) {
     const stateSelect = document.getElementById("live-weather-state-select");
     const distSelect = document.getElementById("live-weather-district-select");
-    if (stateSelect && stateSelect.value !== state) {
+    if (stateSelect) {
         stateSelect.value = state;
-        stateSelect.dispatchEvent(new Event("change"));
     }
-    if (distSelect) {
+    const dists = districtsMap[state] || [];
+    if (distSelect && dists.length > 0) {
+        distSelect.innerHTML = dists.map(d => `<option value="${d}">${d}</option>`).join("");
         distSelect.value = district;
     }
     fetchAndDisplayLiveWeather(district, lat, lon, state, district);
@@ -1009,6 +1212,9 @@ function initLiveStationsLayer() {
             toggleLiveStations();
         });
     }
+
+    // Automatically load and render live station badges on map startup
+    toggleLiveStations();
 }
 
 async function toggleLiveStations() {

@@ -25,10 +25,21 @@ HOST = os.environ.get("HOST", "0.0.0.0")
 DEBUG = os.environ.get("DEBUG", "False").lower() in ("true", "1", "yes")
 SECRET_KEY = os.environ.get("SECRET_KEY", "imd-moes-national-weather-analytics-2026-secret")
 
+# Google Maps Platform / Google Weather API Configuration
+GOOGLE_MAPS_API_KEY = (
+    os.environ.get("GOOGLE_MAPS_API_KEY") or
+    os.environ.get("GOOGLE_WEATHER_API_KEY") or
+    os.environ.get("GOOGLE_API_KEY") or
+    ""
+).strip()
+WEATHER_PROVIDER = os.environ.get("WEATHER_PROVIDER", "free" if not GOOGLE_MAPS_API_KEY else "auto").strip().lower()
+GMP_SOLUTION_ID = "gmp_git_agentskills_v1"
+
 # Ingestion & Streaming Configuration
 QUEUE_MAXSIZE = 10000
 INGESTION_WORKERS = 4
 SIMULATION_STREAM_INTERVAL_SECONDS = 4  # New synthetic/real-time post every 4 seconds in live mode
+LIVE_SCRAPE_INTERVAL_SECONDS = 30       # Background scraper & frontend auto-refresh cycle (30 seconds)
 
 # AI / ML Thresholds
 FAKE_SCORE_THRESHOLD = 50.0  # Scores < 50% deemed fake/misleading
@@ -38,6 +49,7 @@ DEDUP_TEXT_SIMILARITY = 0.35 # Jaccard/TF-IDF threshold for duplicate candidate
 
 # Weather Event Categories (IMD Standard Categories)
 WEATHER_CATEGORIES = [
+    "Clear / Fair",
     "Rainfall",
     "Thunderstorm",
     "Flooding",

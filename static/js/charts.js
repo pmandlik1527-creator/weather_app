@@ -10,18 +10,20 @@ let hotspotsChartInstance = null;
 function getActiveTheme() {
     return (typeof document !== "undefined" && (
         document.body?.classList.contains("light-theme") ||
+        document.body?.classList.contains("cream-theme") ||
         document.documentElement?.getAttribute("data-theme") === "light" ||
+        document.documentElement?.getAttribute("data-theme") === "cream" ||
         localStorage.getItem("imd_theme") === "light"
     )) ? "light" : "dark";
 }
 
 function applyChartThemeDefaults(theme) {
     if (typeof Chart === "undefined") return;
-    if (theme === "light") {
-        Chart.defaults.color = "#475569";
+    if (theme === "light" || theme === "cream") {
+        Chart.defaults.color = "#57534e";
         Chart.defaults.font.family = "'Inter', sans-serif";
         Chart.defaults.font.size = 11;
-        Chart.defaults.borderColor = "rgba(0, 0, 0, 0.08)";
+        Chart.defaults.borderColor = "rgba(120, 113, 108, 0.15)";
     } else {
         Chart.defaults.color = "#94a3b8";
         Chart.defaults.font.family = "'Inter', sans-serif";

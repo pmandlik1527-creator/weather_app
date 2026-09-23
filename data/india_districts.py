@@ -599,10 +599,49 @@ def get_districts_for_state(state_name):
         })
     return sorted(results, key=lambda x: x["name"])
 
-def resolve_location(state_name=None, district_name=None, city_name=None):
+def find_nearest_district(lat, lon):
     """
-    Resolves location coordinates and canonical names given State/District/City.
+    Finds the geographically closest Indian district and state for any given GPS coordinates.
+    Computes equirectangular geodesic distance in kilometers.
     """
+    if lat is None or lon is None:
+        return "Maharashtra", "Pune", 0.0
+
+    import math
+    best = None
+    min_d = float('inf')
+    lat_f = float(lat)
+    lon_f = float(lon)
+
+    cos_lat = math.cos(math.radians(lat_f))
+    for st, dists in INDIA_STATES_DISTRICTS.items():
+        for d, coords in dists.items():
+            dlat = coords["lat"] - lat_f
+            dlon = (coords["lon"] - lon_f) * cos_lat
+            dist = math.sqrt(dlat * dlat + dlon * dlon) * 111.0
+            if dist < min_d:
+                min_d = dist
+                best = (st, d, round(dist, 1))
+
+    return best or ("Maharashtra", "Pune", 0.0)
+
+def resolve_location(state_name=None, district_name=None, city_name=None, lat=None, lon=None):
+    """
+    Resolves location coordinates and canonical names given State/District/City or GPS lat/lon.
+    Prioritizes GPS reverse-lookup when coordinates are provided and district is unspecified.
+    """
+    # 0. If exact GPS coordinates are supplied without district name, reverse-geocode to nearest district
+    if (lat is not None and lon is not None) and not district_name and not city_name:
+        st, dist, _ = find_nearest_district(lat, lon)
+        return st, dist, float(lat), float(lon)
+
+    target = (district_name or city_name or "").strip().lower()
+
+    # 0. Check MAJOR_METEO_ALIASES first for instant high-precision lookup
+    if target and target in MAJOR_METEO_ALIASES:
+        meta = MAJOR_METEO_ALIASES[target]
+        return meta[0], meta[1], meta[2], meta[3]
+
     # 1. Exact match in state
     if state_name and district_name:
         state_dict = INDIA_STATES_DISTRICTS.get(state_name)
@@ -611,7 +650,6 @@ def resolve_location(state_name=None, district_name=None, city_name=None):
             return state_name, district_name, c["lat"], c["lon"]
 
     # 2. Lookup by district_name in ALL_DISTRICTS_LOOKUP
-    target = (district_name or city_name or "").strip().lower()
     if target:
         if target in ALL_DISTRICTS_LOOKUP:
             entry = ALL_DISTRICTS_LOOKUP[target]
@@ -627,39 +665,133 @@ def resolve_location(state_name=None, district_name=None, city_name=None):
             if target in key or key in target:
                 return entry["state"], entry["district"], entry["lat"], entry["lon"]
 
-    # 3. Default to Pune, Maharashtra if Pune requested, or New Delhi
-    if "pune" in (district_name or city_name or "").lower():
+    # 3. If state_name is provided, check STATE_CAPITALS
+    if state_name and state_name.lower() in STATE_CAPITALS:
+        meta = STATE_CAPITALS[state_name.lower()]
+        return meta[0], meta[1], meta[2], meta[3]
+
+    # 4. Default to Pune if explicitly requested, otherwise New Delhi
+    if "pune" in target:
         c = INDIA_STATES_DISTRICTS["Maharashtra"]["Pune"]
         return "Maharashtra", "Pune", c["lat"], c["lon"]
 
     c = INDIA_STATES_DISTRICTS["Delhi"]["New Delhi"]
     return "Delhi", "New Delhi", c["lat"], c["lon"]
 
+MAJOR_METEO_ALIASES = {
+    "new delhi": ("Delhi", "New Delhi", 28.6139, 77.2090),
+    "delhi": ("Delhi", "New Delhi", 28.6139, 77.2090),
+    "ncr": ("Delhi", "New Delhi", 28.6139, 77.2090),
+    "noida": ("Uttar Pradesh", "Gautam Buddha Nagar (Noida)", 28.5355, 77.3910),
+    "gurugram": ("Haryana", "Gurugram", 28.4595, 77.0266),
+    "gurgaon": ("Haryana", "Gurugram", 28.4595, 77.0266),
+    "faridabad": ("Haryana", "Faridabad", 28.4089, 77.3178),
+    "ghaziabad": ("Uttar Pradesh", "Ghaziabad", 28.6692, 77.4538),
+    "mumbai": ("Maharashtra", "Mumbai City", 19.0760, 72.8777),
+    "bombay": ("Maharashtra", "Mumbai City", 19.0760, 72.8777),
+    "bengaluru": ("Karnataka", "Bengaluru Urban", 12.9716, 77.5946),
+    "bangalore": ("Karnataka", "Bengaluru Urban", 12.9716, 77.5946),
+    "chennai": ("Tamil Nadu", "Chennai", 13.0827, 80.2707),
+    "madras": ("Tamil Nadu", "Chennai", 13.0827, 80.2707),
+    "kolkata": ("West Bengal", "Kolkata", 22.5726, 88.3639),
+    "calcutta": ("West Bengal", "Kolkata", 22.5726, 88.3639),
+    "hyderabad": ("Telangana", "Hyderabad", 17.3850, 78.4867),
+    "secunderabad": ("Telangana", "Hyderabad", 17.3850, 78.4867),
+    "pune": ("Maharashtra", "Pune", 18.5204, 73.8567),
+    "ahmedabad": ("Gujarat", "Ahmedabad", 23.0225, 72.5714),
+    "jaipur": ("Rajasthan", "Jaipur", 26.9124, 75.7873),
+    "lucknow": ("Uttar Pradesh", "Lucknow", 26.8467, 80.9462),
+    "patna": ("Bihar", "Patna", 25.5941, 85.1376),
+    "bhubaneswar": ("Odisha", "Bhubaneswar", 20.2961, 85.8245),
+    "puri": ("Odisha", "Puri", 19.8135, 85.8312),
+    "cuttack": ("Odisha", "Cuttack", 20.4625, 85.8828),
+    "guwahati": ("Assam", "Guwahati", 26.1445, 91.7362),
+    "srinagar": ("Jammu and Kashmir", "Srinagar", 34.0837, 74.7973),
+    "shimla": ("Himachal Pradesh", "Shimla", 31.1048, 77.1734),
+    "dehradun": ("Uttarakhand", "Dehradun", 30.3165, 78.0322),
+    "chandigarh": ("Punjab", "Chandigarh", 30.7333, 76.7794),
+    "kochi": ("Kerala", "Kochi", 9.9312, 76.2673),
+    "cochin": ("Kerala", "Kochi", 9.9312, 76.2673),
+    "thiruvananthapuram": ("Kerala", "Thiruvananthapuram", 8.5241, 76.9366),
+    "trivandrum": ("Kerala", "Thiruvananthapuram", 8.5241, 76.9366),
+    "varanasi": ("Uttar Pradesh", "Varanasi", 25.3176, 82.9739),
+    "kanpur": ("Uttar Pradesh", "Kanpur Nagar", 26.4499, 80.3319),
+    "visakhapatnam": ("Andhra Pradesh", "Visakhapatnam", 17.6868, 83.2185),
+    "vizag": ("Andhra Pradesh", "Visakhapatnam", 17.6868, 83.2185),
+    "vijayawada": ("Andhra Pradesh", "Vijayawada", 16.5062, 80.6480),
+    "nagpur": ("Maharashtra", "Nagpur", 21.1458, 79.0882),
+    "indore": ("Madhya Pradesh", "Indore", 22.7196, 75.8577),
+    "bhopal": ("Madhya Pradesh", "Bhopal", 23.2599, 77.4126),
+    "raipur": ("Chhattisgarh", "Raipur", 21.2514, 81.6296),
+    "panaji": ("Goa", "Panaji (North Goa)", 15.4909, 73.8278),
+    "ranchi": ("Jharkhand", "Ranchi", 23.3441, 85.3096),
+    "amritsar": ("Punjab", "Amritsar", 31.6340, 74.8723),
+    "surat": ("Gujarat", "Surat", 21.1702, 72.8311),
+    "coimbatore": ("Tamil Nadu", "Coimbatore", 11.0168, 76.9558),
+    "leh": ("Ladakh", "Leh", 34.1526, 77.5771),
+    "shillong": ("Meghalaya", "Shillong (East Khasi Hills)", 25.5788, 91.8933),
+    "bengal": ("West Bengal", "Kolkata", 22.5726, 88.3639),
+    "bay of bengal": ("West Bengal", "Kolkata", 22.5726, 88.3639)
+}
+
+STATE_CAPITALS = {
+    "maharashtra": ("Maharashtra", "Mumbai City", 19.0760, 72.8777),
+    "delhi": ("Delhi", "New Delhi", 28.6139, 77.2090),
+    "karnataka": ("Karnataka", "Bengaluru Urban", 12.9716, 77.5946),
+    "tamil nadu": ("Tamil Nadu", "Chennai", 13.0827, 80.2707),
+    "west bengal": ("West Bengal", "Kolkata", 22.5726, 88.3639),
+    "telangana": ("Telangana", "Hyderabad", 17.3850, 78.4867),
+    "andhra pradesh": ("Andhra Pradesh", "Vijayawada", 16.5062, 80.6480),
+    "gujarat": ("Gujarat", "Ahmedabad", 23.0225, 72.5714),
+    "rajasthan": ("Rajasthan", "Jaipur", 26.9124, 75.7873),
+    "uttar pradesh": ("Uttar Pradesh", "Lucknow", 26.8467, 80.9462),
+    "bihar": ("Bihar", "Patna", 25.5941, 85.1376),
+    "odisha": ("Odisha", "Bhubaneswar", 20.2961, 85.8245),
+    "assam": ("Assam", "Guwahati", 26.1445, 91.7362),
+    "kerala": ("Kerala", "Thiruvananthapuram", 8.5241, 76.9366),
+    "madhya pradesh": ("Madhya Pradesh", "Bhopal", 23.2599, 77.4126),
+    "punjab": ("Punjab", "Chandigarh", 30.7333, 76.7794),
+    "haryana": ("Haryana", "Chandigarh", 30.7333, 76.7794),
+    "jharkhand": ("Jharkhand", "Ranchi", 23.3441, 85.3096),
+    "chhattisgarh": ("Chhattisgarh", "Raipur", 21.2514, 81.6296),
+    "himachal pradesh": ("Himachal Pradesh", "Shimla", 31.1048, 77.1734),
+    "uttarakhand": ("Uttarakhand", "Dehradun", 30.3165, 78.0322),
+    "jammu and kashmir": ("Jammu and Kashmir", "Srinagar", 34.0837, 74.7973),
+    "goa": ("Goa", "Panaji (North Goa)", 15.4909, 73.8278),
+    "meghalaya": ("Meghalaya", "Shillong (East Khasi Hills)", 25.5788, 91.8933),
+    "tripura": ("Tripura", "Agartala", 23.8315, 91.2868),
+    "manipur": ("Manipur", "Imphal", 24.8170, 93.9368),
+    "nagaland": ("Nagaland", "Kohima", 25.6751, 94.1086),
+    "mizoram": ("Mizoram", "Aizawl", 23.7271, 92.7176),
+    "sikkim": ("Sikkim", "Gangtok", 27.3389, 88.6065),
+    "arunachal pradesh": ("Arunachal Pradesh", "Itanagar", 27.0844, 93.6053),
+    "ladakh": ("Ladakh", "Leh", 34.1526, 77.5771)
+}
+
 def extract_location_from_text(text):
     """
-    Extracts Indian State, District, and coordinates from arbitrary text using regex boundary matching.
-    Avoids false positives with short abbreviations or general climatic words (like 'monsoon').
+    Accurately extracts Indian State, District, and coordinates from arbitrary weather text.
+    Prioritizes specific major city aliases first, then full 500+ district registry, then state capitals.
     """
     if not text:
         return "Delhi", "New Delhi", 28.6139, 77.2090
 
     text_lower = text.lower()
 
-    # 1. First check states by length descending
-    for state in sorted(ALL_STATES, key=len, reverse=True):
-        if re.search(r'\b' + re.escape(state.lower()) + r'\b', text_lower):
-            for d_name, coords in INDIA_STATES_DISTRICTS[state].items():
-                clean_d = d_name.split('(')[0].strip().lower()
-                if len(clean_d) > 3 and re.search(r'\b' + re.escape(clean_d) + r'\b', text_lower):
-                    return state, d_name, coords['lat'], coords['lon']
-            first_d = list(INDIA_STATES_DISTRICTS[state].keys())[0]
-            c = INDIA_STATES_DISTRICTS[state][first_d]
-            return state, first_d, c['lat'], c['lon']
+    # Step 1: Check high-precision major city and meteorological station aliases
+    for alias, meta in sorted(MAJOR_METEO_ALIASES.items(), key=lambda x: len(x[0]), reverse=True):
+        if re.search(r'\b' + re.escape(alias) + r'\b', text_lower):
+            return meta[0], meta[1], meta[2], meta[3]
 
-    # 2. Check all districts across India by length descending
+    # Step 2: Check all districts across India by length descending
     for d_clean, entry in sorted(ALL_DISTRICTS_LOOKUP.items(), key=lambda x: len(x[0]), reverse=True):
         if len(d_clean) > 3 and re.search(r'\b' + re.escape(d_clean) + r'\b', text_lower):
             return entry['state'], entry['district'], entry['lat'], entry['lon']
 
-    # 3. Default fallback to New Delhi
+    # Step 3: Check states and map to their official capital/headquarters
+    for state_name, meta in sorted(STATE_CAPITALS.items(), key=lambda x: len(x[0]), reverse=True):
+        if re.search(r'\b' + re.escape(state_name) + r'\b', text_lower):
+            return meta[0], meta[1], meta[2], meta[3]
+
+    # Step 4: Default fallback to National Capital New Delhi
     return "Delhi", "New Delhi", 28.6139, 77.2090

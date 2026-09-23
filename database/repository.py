@@ -480,7 +480,9 @@ def seed_default_sources_if_empty():
             ("tw_cyclone_watch", "Twitter / X Cyclone Alerts", "twitter", "#CycloneAlert,#BayOfBengal", 1, 10),
             ("citizen_portal", "Citizen Web & Mobile Reporting Desk", "citizen", "direct_submission_api", 1, 1),
             ("open_meteo_imd", "Open-Meteo Ground Observation Sensors", "open_meteo", "national_radar_grid", 1, 30),
-            ("ig_weather_photos", "Instagram Weather Stories & Photos", "instagram", "#weatherindia,#monsoondairies", 1, 15)
+            ("ig_weather_photos", "Instagram Weather Stories & Photos", "instagram", "#weatherindia,#monsoondairies", 1, 15),
+            ("google_news_weather", "Google News Live Meteorological Bulletins", "google_news", "IMD weather alert India", 1, 30),
+            ("third_party_skymet", "Skymet & Weather Apps Telemetry", "third_party_app", "Skymet AccuWeather India", 1, 30)
         ]
         with db_cursor() as wcur:
             for s_id, name, stype, query, active, poll in default_sources:

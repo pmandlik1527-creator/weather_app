@@ -22,10 +22,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=2.2">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=4.3">
     {% block extra_css %}{% endblock %}
 </head>
-<body class="dark-theme">
+<body class="cream-theme light-theme">
     <!-- Tiranga National Stripe -->
     <div class="tiranga-bar"></div>
 
@@ -79,6 +79,16 @@
                     <span id="header-clock">--:--:-- IST</span>
                 </div>
 
+                <!-- 30-Second Live Scrape & Auto-Refresh Controller -->
+                <div class="live-sync-pill" id="live-sync-pill" title="Auto-scrapes live IMD feeds and refreshes dashboard every 30 seconds">
+                    <span class="live-sync-dot"></span>
+                    <span class="live-sync-label">LIVE 30s SCRAPE:</span>
+                    <span class="live-sync-timer" id="live-sync-countdown">30s</span>
+                    <button id="btn-manual-sync" class="btn-sync-spin" title="Force Scrape & Refresh Real Data Now">
+                        <i class="fa-solid fa-rotate"></i>
+                    </button>
+                </div>
+
                 <!-- User Authentication Widget -->
                 {% if current_user %}
                 <div class="user-profile-badge" title="Signed in as {{ current_user.full_name }} ({{ current_user.role }})">
@@ -97,11 +107,11 @@
                 </a>
                 {% endif %}
 
-                <!-- Theme Switcher (Light / Dark Mode) -->
-                <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">
+                <!-- Theme Switcher (Executive Cream / Dark Command) -->
+                <button id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle Executive Cream / Dark Command Mode" aria-label="Toggle Theme">
                     <i class="fa-solid fa-moon theme-icon-dark"></i>
                     <i class="fa-solid fa-sun theme-icon-light"></i>
-                    <span id="theme-text-label">Dark</span>
+                    <span id="theme-text-label">Cream</span>
                 </button>
             </div>
         </div>
@@ -169,8 +179,14 @@
         </div>
     </footer>
 
+    <!-- Real-time Live Scrape & Sync Toast Notification -->
+    <div id="live-toast-alert" class="live-toast-alert">
+        <i class="fa-solid fa-circle-check" style="color: var(--accent-emerald);"></i>
+        <span id="live-toast-msg">Scraped & updated live weather intelligence</span>
+    </div>
+
     <!-- Global App Script -->
-    <script src="{{ url_for('static', filename='js/app.js') }}?v=2.2"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v=4.3"></script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

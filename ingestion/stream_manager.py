@@ -91,11 +91,14 @@ class StreamPipelineManager:
                 raw_report["author_credibility_tier"] = src_meta["tier"]
                 raw_report["source_credibility_score"] = src_meta["score"]
 
-                # 2. AI Auto-Categorization
-                text = raw_report.get("raw_text", "")
-                cat_result = categorizer.predict(text)
-                raw_report["detected_category"] = cat_result["category"]
-                raw_report["category_confidence"] = cat_result["confidence"]
+                # 2. AI Auto-Categorization (or preserve verified ground-truth sensor category)
+                if not raw_report.get("detected_category") or source_type != "open_meteo":
+                    text = raw_report.get("raw_text", "")
+                    cat_result = categorizer.predict(text)
+                    raw_report["detected_category"] = cat_result["category"]
+                    raw_report["category_confidence"] = cat_result["confidence"]
+                elif not raw_report.get("category_confidence"):
+                    raw_report["category_confidence"] = 0.98
 
                 # 3. AI Fake / Misleading Report Detection
                 fake_result = fake_detector.evaluate(raw_report, src_meta["score"])
@@ -153,10 +156,14 @@ class StreamPipelineManager:
         raw_report["author_credibility_tier"] = src_meta["tier"]
         raw_report["source_credibility_score"] = src_meta["score"]
 
-        text = raw_report.get("raw_text", "")
-        cat_result = categorizer.predict(text)
-        raw_report["detected_category"] = cat_result["category"]
-        raw_report["category_confidence"] = cat_result["confidence"]
+        # 2. AI Auto-Categorization (or preserve verified ground-truth sensor category)
+        if not raw_report.get("detected_category") or source_type != "open_meteo":
+            text = raw_report.get("raw_text", "")
+            cat_result = categorizer.predict(text)
+            raw_report["detected_category"] = cat_result["category"]
+            raw_report["category_confidence"] = cat_result["confidence"]
+        elif not raw_report.get("category_confidence"):
+            raw_report["category_confidence"] = 0.98
 
         fake_result = fake_detector.evaluate(raw_report, src_meta["score"])
         raw_report["authenticity_score"] = fake_result["authenticity_score"]

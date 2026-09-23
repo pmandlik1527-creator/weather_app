@@ -18,10 +18,15 @@
     border: 1px solid var(--border-color);
 }
 
+body.light-theme .portal-hero, body.cream-theme .portal-hero {
+    background: linear-gradient(180deg, #f4efe5 0%, #faf8f3 100%);
+    border-color: #e5dfd3;
+}
+
 .portal-hero h2 {
     font-size: 1.6rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--text-heading);
     margin-bottom: 0.5rem;
 }
 
@@ -44,7 +49,7 @@
 .section-title {
     font-size: 1.05rem;
     font-weight: 700;
-    color: #ffffff;
+    color: var(--text-heading);
     display: flex;
     align-items: center;
     gap: 0.6rem;
@@ -176,8 +181,8 @@
 }
 
 .sample-photo-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
+    background: var(--card-item-hover);
+    color: var(--text-heading);
 }
 
 .photo-preview-box {
@@ -364,7 +369,7 @@
         <div class="photo-preview-box" id="photo-preview-box">
             <img id="img-preview" src="" alt="Photo Preview">
             <div>
-                <strong style="font-size: 0.8rem; color: #fff;">Attached Weather Evidence</strong>
+                <strong style="font-size: 0.8rem; color: var(--text-heading);">Attached Weather Evidence</strong>
                 <p style="font-size: 0.72rem; color: var(--accent-emerald);">Ready for AI Verification Pipeline</p>
             </div>
         </div>
@@ -393,7 +398,7 @@
     <!-- Success Confirmation Receipt -->
     <div class="submission-receipt" id="submission-receipt">
         <i class="fa-solid fa-circle-check" style="font-size: 2.5rem; color: var(--accent-emerald); margin-bottom: 0.75rem;"></i>
-        <h3 style="color: #ffffff; font-size: 1.3rem; margin-bottom: 0.3rem;">Report Successfully Ingested!</h3>
+        <h3 style="color: var(--text-heading); font-size: 1.3rem; margin-bottom: 0.3rem;">Report Successfully Ingested!</h3>
         <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
             Tracking UUID: <strong id="receipt-uuid" style="font-family: var(--font-mono); color: var(--accent-cyan);"></strong>
         </p>

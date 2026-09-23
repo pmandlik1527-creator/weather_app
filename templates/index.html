@@ -104,9 +104,12 @@
             <select id="filter-source" class="form-select">
                 <option value="all">All Channels</option>
                 <option value="twitter">X / Twitter</option>
-                <option value="citizen">Citizen Desk</option>
-                <option value="open_meteo">Open Weather Stations</option>
                 <option value="instagram">Instagram</option>
+                <option value="google_news">Google News / Bulletins</option>
+                <option value="third_party_app">Skymet / Weather Apps</option>
+                <option value="mastodon">Mastodon / Fediverse</option>
+                <option value="open_meteo">IMD / AWS Stations</option>
+                <option value="citizen">Citizen Desk</option>
             </select>
         </div>
 
@@ -156,7 +159,7 @@
         <div class="live-weather-title-group">
             <span class="live-sensor-dot"></span>
             <span class="live-sensor-title"><i class="fa-solid fa-cloud-bolt"></i> Real-Time Meteorological Station & Sensor Feed</span>
-            <span class="badge-station-live">OPEN-METEO / IMD RADAR</span>
+            <span class="badge-station-live" id="lw-provider-badge">{{ (initial_weather.provider if initial_weather and initial_weather.provider else 'GOOGLE WEATHER / IMD') | upper }}</span>
         </div>
         <div class="live-weather-controls">
             <!-- State Selector Dropdown -->
@@ -208,19 +211,19 @@
         <!-- Live Weather Hero Card -->
         <div class="live-weather-hero">
             <div class="hero-left">
-                <div class="hero-station-name" id="lw-station-name">{{ initial_weather.city if initial_weather else 'Pune' }}, {{ initial_weather.state if initial_weather else 'Maharashtra' }}</div>
+                <div class="hero-station-name" id="lw-station-name">{{ initial_weather.city if initial_weather else 'New Delhi' }}, {{ initial_weather.state if initial_weather else 'Delhi' }}</div>
                 <div class="hero-timestamp" id="lw-timestamp">
-                    <span class="live-sensor-dot"></span> Live Telemetry &bull; Ground Station Sensor ({{ initial_weather.latitude if initial_weather else '18.52' }}°N, {{ initial_weather.longitude if initial_weather else '73.85' }}°E)
+                    <span class="live-sensor-dot"></span> Live Telemetry &bull; {{ initial_weather.provider if initial_weather and initial_weather.provider else 'Google Maps Weather API' }} ({{ initial_weather.latitude if initial_weather else '28.61' }}°N, {{ initial_weather.longitude if initial_weather else '77.21' }}°E)
                 </div>
                 <div class="hero-temp-row">
-                    <span class="hero-temp-value" id="lw-temp">{{ initial_weather.temperature if initial_weather else '22' }}°</span>
+                    <span class="hero-temp-value" id="lw-temp">{{ initial_weather.temperature if initial_weather else '36' }}°</span>
                     <span class="hero-temp-unit">C</span>
                     <div class="hero-icon-box" id="lw-icon-box">
                         <i class="fa-solid {{ initial_weather.icon if initial_weather else 'fa-cloud-sun' }} hero-weather-icon" id="lw-icon"></i>
                     </div>
                 </div>
                 <div class="hero-condition-text" id="lw-desc">
-                    {{ initial_weather.emoji if initial_weather else '⛅' }} <strong>{{ initial_weather.condition_desc if initial_weather else 'Partly Cloudy' }}</strong> &bull; Ground Truth Sensor
+                    {{ initial_weather.emoji if initial_weather else '🌤️' }} <strong>{{ initial_weather.condition_desc if initial_weather else 'Mainly Clear' }}</strong> &bull; {{ initial_weather.provider_detail if initial_weather and initial_weather.provider_detail else 'Hyperlocal Meteorological Telemetry' }}
                 </div>
             </div>
 
@@ -230,21 +233,21 @@
                     <div class="metric-icon metric-amber"><i class="fa-solid fa-temperature-arrow-up"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Feels Like</span>
-                        <span class="metric-tile-value" id="lw-feels-like">{{ initial_weather.apparent_temperature if initial_weather else '25' }}°C</span>
+                        <span class="metric-tile-value" id="lw-feels-like">{{ initial_weather.apparent_temperature if initial_weather else '38' }}°C</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-cyan"><i class="fa-solid fa-droplet"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Relative Humidity</span>
-                        <span class="metric-tile-value" id="lw-humidity">{{ initial_weather.humidity if initial_weather else '94' }}%</span>
+                        <span class="metric-tile-value" id="lw-humidity">{{ initial_weather.humidity if initial_weather else '60' }}%</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-blue"><i class="fa-solid fa-wind"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Wind Velocity</span>
-                        <span class="metric-tile-value" id="lw-wind">{{ initial_weather.wind_speed_kmh if initial_weather else '8.1' }} km/h</span>
+                        <span class="metric-tile-value" id="lw-wind">{{ initial_weather.wind_speed_kmh if initial_weather else '12.0' }} km/h</span>
                     </div>
                 </div>
                 <div class="metric-tile">
@@ -258,14 +261,14 @@
                     <div class="metric-icon metric-purple"><i class="fa-solid fa-gauge-high"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">Atm. Pressure</span>
-                        <span class="metric-tile-value" id="lw-pressure">{{ initial_weather.pressure_hpa if initial_weather else '950' }} hPa</span>
+                        <span class="metric-tile-value" id="lw-pressure">{{ initial_weather.pressure_hpa if initial_weather else '1010' }} hPa</span>
                     </div>
                 </div>
                 <div class="metric-tile">
                     <div class="metric-icon metric-rose"><i class="fa-solid fa-layer-group"></i></div>
                     <div class="metric-info">
                         <span class="metric-tile-label">IMD Category</span>
-                        <span class="metric-tile-value" id="lw-category">{{ initial_weather.category if initial_weather else 'Rainfall' }}</span>
+                        <span class="metric-tile-value" id="lw-category">{{ initial_weather.category if initial_weather else 'Clear / Fair' }}</span>
                     </div>
                 </div>
             </div>
@@ -501,8 +504,10 @@
                         <label class="form-label" style="font-size:0.82rem;"><i class="fa-solid fa-share-nodes"></i> Platform</label>
                         <select id="social-post-platform" class="form-select form-select-sm">
                             <option value="twitter">X / Twitter</option>
-                            <option value="mastodon">Mastodon</option>
                             <option value="instagram">Instagram</option>
+                            <option value="google_news">Google News / Bulletin</option>
+                            <option value="third_party_app">Skymet / Weather App</option>
+                            <option value="mastodon">Mastodon / Fediverse</option>
                             <option value="citizen">Citizen Desk</option>
                         </select>
                     </div>
@@ -528,53 +533,6 @@
 <script id="districts-data" type="application/json">
 {{ districts_by_state | tojson }}
 </script>
-<script src="{{ url_for('static', filename='js/map.js') }}?v=3.0"></script>
-<script src="{{ url_for('static', filename='js/charts.js') }}?v=3.0"></script>
-<script>
-// Immediate inline handler ensuring instant state-district cascading and updates
-(function() {
-    function bindWeatherUI() {
-        const stateSelect = document.getElementById("live-weather-state-select");
-        const distSelect = document.getElementById("live-weather-district-select");
-        const dataEl = document.getElementById("districts-data");
-        let distData = {};
-        try {
-            if (dataEl) distData = JSON.parse(dataEl.textContent);
-        } catch(e) {}
-
-        if (stateSelect && !stateSelect.dataset.bound) {
-            stateSelect.dataset.bound = "true";
-            stateSelect.addEventListener("change", function(e) {
-                const st = e.target.value;
-                const dList = distData[st] || [];
-                if (distSelect) {
-                    distSelect.innerHTML = dList.map(d => `<option value="${d}">${d}</option>`).join("");
-                    if (dList.length > 0) {
-                        distSelect.value = dList[0];
-                        if (typeof fetchAndDisplayLiveWeather === "function") {
-                            fetchAndDisplayLiveWeather(dList[0], null, null, st, dList[0]);
-                        }
-                    }
-                }
-            });
-        }
-
-        if (distSelect && !distSelect.dataset.bound) {
-            distSelect.dataset.bound = "true";
-            distSelect.addEventListener("change", function(e) {
-                const st = stateSelect ? stateSelect.value : "Maharashtra";
-                const d = e.target.value;
-                if (typeof fetchAndDisplayLiveWeather === "function") {
-                    fetchAndDisplayLiveWeather(d, null, null, st, d);
-                }
-            });
-        }
-    }
-    if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", bindWeatherUI);
-    } else {
-        bindWeatherUI();
-    }
-})();
-</script>
+<script src="{{ url_for('static', filename='js/map.js') }}?v=4.2"></script>
+<script src="{{ url_for('static', filename='js/charts.js') }}?v=4.2"></script>
 {% endblock %}

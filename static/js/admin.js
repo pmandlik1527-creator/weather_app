@@ -44,7 +44,7 @@ async function loadModerationQueue() {
                         <small style="color:#38bdf8;">${r.author_handle}</small>
                     </td>
                     <td>
-                        <span class="report-category-badge cat-${r.detected_category.replace('/', '-')}">
+                        <span class="report-category-badge cat-${(r.detected_category || 'Clear-Fair').replace(/[\s\/]+/g, '-')}">
                             ${r.detected_category}
                         </span>
                         <div style="font-size:0.7rem;color:#94a3b8;margin-top:2px;">

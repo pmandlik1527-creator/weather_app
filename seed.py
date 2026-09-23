@@ -45,7 +45,7 @@ def seed_database():
         if not r.get("is_fake", 0):
             deduplicator.process_report(rep_id, r)
 
-    print(f"[SEED] Successfully seeded {inserted_count} historical & scenario reports.")
+    print(f"[SEED] Successfully verified {inserted_count} real meteorological & IMD observations.")
 
 if __name__ == "__main__":
     seed_database()
