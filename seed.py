@@ -25,7 +25,7 @@ def seed_database():
         print("[SEED] Seed file not found.")
         return
 
-    with open(seed_file, "r", encoding="utf-8") as f:
+    with open(seed_file, "r", encoding="utf-8-sig") as f:
         seed_reports = json.load(f)
 
     # Purge any legacy mock or synthetic test data from SQLite
