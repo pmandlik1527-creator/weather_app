@@ -742,6 +742,32 @@ def api_weather_diagnostics():
     pune_live = google_weather_connector.get_live_weather(city_name="Pune", force_refresh=True)
     diag["pune_live_sample"] = pune_live
 
+    # 4. Database Check & Auto-seed
+    try:
+        from database.db import get_connection
+        conn = get_connection()
+        cur = conn.cursor()
+        cur.execute("SELECT count(*) FROM weather_reports")
+        sqlite_count = cur.fetchone()[0]
+        diag["sqlite_count"] = sqlite_count
+        if sqlite_count == 0:
+            from seed import seed_database
+            seed_database()
+            cur.execute("SELECT count(*) FROM weather_reports")
+            diag["sqlite_count_after_seed"] = cur.fetchone()[0]
+    except Exception as e:
+        diag["sqlite_error"] = str(e)
+
+    try:
+        from database.supabase_client import is_supabase_available, get_supabase_client
+        diag["supabase_available"] = is_supabase_available()
+        if is_supabase_available():
+            client = get_supabase_client()
+            res = client.table("weather_reports").select("id", count="exact").limit(1).execute()
+            diag["supabase_count"] = res.count
+    except Exception as e:
+        diag["supabase_error"] = str(e)
+
     return jsonify({"success": True, "diagnostics": diag})
 
 
