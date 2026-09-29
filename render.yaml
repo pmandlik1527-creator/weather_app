@@ -11,4 +11,6 @@ services:
         value: 3.12.4
       - key: WEATHER_PROVIDER
         value: free
+      - key: OPENROUTER_MODEL
+        value: google/gemini-2.5-flash
 

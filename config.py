@@ -35,6 +35,12 @@ GOOGLE_MAPS_API_KEY = (
 WEATHER_PROVIDER = os.environ.get("WEATHER_PROVIDER", "free" if not GOOGLE_MAPS_API_KEY else "auto").strip().lower()
 GMP_SOLUTION_ID = "gmp_git_agentskills_v1"
 
+# OpenRouter AI Weather Forecast Configuration
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY", "").strip()
+OPENROUTER_MODEL = os.environ.get("OPENROUTER_MODEL", "google/gemini-2.5-flash").strip()
+OPENROUTER_SITE_URL = os.environ.get("OPENROUTER_SITE_URL", "https://wataveran.onrender.com").strip()
+OPENROUTER_SITE_NAME = os.environ.get("OPENROUTER_SITE_NAME", "IMD NWBDAP Weather Platform").strip()
+
 # Ingestion & Streaming Configuration
 QUEUE_MAXSIZE = 10000
 INGESTION_WORKERS = 4

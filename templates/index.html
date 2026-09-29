@@ -56,16 +56,41 @@
     <div class="filter-row">
         <!-- Date / Time Filter -->
         <div class="filter-group">
-            <span class="filter-label"><i class="fa-regular fa-clock"></i> Time Window:</span>
+            <span class="filter-label"><i class="fa-regular fa-calendar-days"></i> Time Window:</span>
             <select id="filter-time" class="form-select">
                 <option value="all">All Available</option>
                 <option value="24h" selected>Last 24 Hours</option>
                 <option value="today">Today (IST)</option>
+                <option value="yesterday">Yesterday</option>
                 <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="custom">📅 Custom Date Range...</option>
             </select>
         </div>
 
-        <!-- State Selector -->
+        <!-- Custom Date Range Inputs (Toggled on "custom") -->
+        <div class="filter-group custom-date-picker-group" id="custom-date-group" style="display: none;">
+            <span class="filter-label"><i class="fa-regular fa-calendar"></i> From:</span>
+            <input type="date" id="filter-date-from" class="form-control form-control-sm" title="Start Date" />
+            <span class="filter-label"><i class="fa-solid fa-arrow-right"></i> To:</span>
+            <input type="date" id="filter-date-to" class="form-control form-control-sm" title="End Date" />
+            <button type="button" class="btn btn-primary btn-sm" id="btn-apply-custom-date" title="Apply Custom Date Range">
+                <i class="fa-solid fa-check"></i> Apply
+            </button>
+        </div>
+
+        <!-- Weather Event Filter -->
+        <div class="filter-group">
+            <span class="filter-label"><i class="fa-solid fa-cloud-bolt"></i> Weather Event:</span>
+            <select id="filter-category" class="form-select">
+                <option value="all">All Weather Events</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Location: State Selector -->
         <div class="filter-group">
             <span class="filter-label"><i class="fa-solid fa-map-location-dot"></i> State:</span>
             <select id="filter-state" class="form-select">
@@ -76,15 +101,18 @@
             </select>
         </div>
 
-        <!-- City Selector -->
+        <!-- Location: District / City Selector -->
         <div class="filter-group">
-            <span class="filter-label"><i class="fa-solid fa-city"></i> City / Center:</span>
+            <span class="filter-label"><i class="fa-solid fa-location-dot"></i> District / City:</span>
             <select id="filter-city" class="form-select">
-                <option value="all">All Cities</option>
+                <option value="all">All Districts</option>
                 {% for c in cities %}
                 <option value="{{ c }}">{{ c }}</option>
                 {% endfor %}
             </select>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-filter-near-me" title="Filter reports within 50km of your current GPS location">
+                <i class="fa-solid fa-crosshairs"></i> Near Me
+            </button>
         </div>
 
         <!-- Verification Status -->
@@ -288,6 +316,54 @@
                 </div>
                 {% endfor %}
                 {% endif %}
+            </div>
+        </div>
+
+        <!-- OpenRouter AI Meteorologist Intelligence & Advisory Deck -->
+        <div class="ai-forecast-deck" id="ai-forecast-deck">
+            <div class="ai-forecast-header">
+                <div class="ai-forecast-title-group">
+                    <span class="ai-pulse-orb"></span>
+                    <span class="ai-deck-title"><i class="fa-solid fa-brain"></i> OpenRouter AI Meteorological Intelligence & Forecast</span>
+                    <span class="badge-ai-model" id="ai-model-badge"><i class="fa-solid fa-microchip"></i> OpenRouter AI</span>
+                    <span class="badge-hazard-alert" id="ai-hazard-badge">🟢 Loading AI Forecast...</span>
+                </div>
+                <div class="ai-forecast-actions">
+                    <button class="btn btn-sm btn-outline-primary" id="btn-refresh-ai-forecast" type="button" title="Regenerate OpenRouter AI Forecast">
+                        <i class="fa-solid fa-arrows-rotate"></i> Refresh AI Forecast
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="btn-openrouter-config" type="button" title="Configure OpenRouter API Key" onclick="openOpenRouterModal()">
+                        <i class="fa-solid fa-key"></i> OpenRouter Key
+                    </button>
+                </div>
+            </div>
+
+            <div class="ai-forecast-content" id="ai-forecast-content">
+                <div class="ai-synopsis-box">
+                    <div class="ai-synopsis-label"><i class="fa-solid fa-wand-magic-sparkles"></i> Executive Meteorological Synopsis (Next 12–24h)</div>
+                    <p class="ai-synopsis-text" id="ai-synopsis-text">Analyzing ground-truth atmospheric signals and pressure gradients...</p>
+                </div>
+
+                <div class="ai-grid-columns">
+                    <div class="ai-column-card">
+                        <div class="ai-col-header"><i class="fa-solid fa-triangle-exclamation text-amber"></i> Key Atmospheric Hazards</div>
+                        <ul class="ai-hazard-list" id="ai-hazard-list">
+                            <li><i class="fa-solid fa-circle-check text-success"></i> Computing local thermodynamic risk indices...</li>
+                        </ul>
+                    </div>
+
+                    <div class="ai-column-card">
+                        <div class="ai-col-header"><i class="fa-solid fa-shield-halved text-cyan"></i> Public Safety & Citizen Advisories</div>
+                        <ul class="ai-advisory-list" id="ai-advisory-list">
+                            <li><i class="fa-solid fa-compass text-info"></i> Formulating tailored commute and outdoor guidance...</li>
+                        </ul>
+                    </div>
+
+                    <div class="ai-column-card">
+                        <div class="ai-col-header"><i class="fa-solid fa-chart-line text-purple"></i> Synoptic Dynamics</div>
+                        <p class="ai-synoptic-text" id="ai-synoptic-text">Evaluating surface pressure and boundary layer stability.</p>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -521,6 +597,43 @@
                     <button type="button" class="btn btn-secondary btn-sm" onclick="closeSocialModal()">Cancel</button>
                     <button type="submit" class="btn btn-primary btn-sm" id="btn-submit-social-ingest">
                         <i class="fa-solid fa-brain"></i> Analyze & Ingest Live
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- OpenRouter API Key Configuration Modal -->
+<div class="modal-backdrop" id="openrouter-config-modal" style="display: none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <div class="modal-title">
+                <i class="fa-solid fa-key" style="color:var(--primary);"></i> OpenRouter API Configuration
+            </div>
+            <button class="modal-close-btn" onclick="closeOpenRouterModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:12px;">
+                Enter your <a href="https://openrouter.ai/keys" target="_blank" style="color:var(--primary); font-weight:600;">OpenRouter API Key</a> to power real-time AI weather forecast analysis, hazard predictions, and public advisories using cutting-edge LLMs (Gemini, Claude, Llama, Mistral).
+            </p>
+            <form id="openrouter-key-form" onsubmit="saveOpenRouterKey(event)">
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-size:0.82rem;"><i class="fa-solid fa-lock"></i> OpenRouter API Key</label>
+                    <input id="input-openrouter-key" type="password" class="form-control form-control-sm" placeholder="sk-or-v1-..." required />
+                </div>
+                <div class="form-group mb-3">
+                    <label class="form-label" style="font-size:0.82rem;"><i class="fa-solid fa-microchip"></i> AI Model (OpenRouter Model Identifier)</label>
+                    <input id="input-openrouter-model" type="text" class="form-control form-control-sm" placeholder="google/gemini-2.5-flash" value="google/gemini-2.5-flash" />
+                    <small style="font-size:0.75rem; color:var(--text-muted); display:block; margin-top:4px;">
+                        Examples: <code>google/gemini-2.5-flash</code>, <code>meta-llama/llama-3.3-70b-instruct:free</code>, <code>mistralai/mistral-7b-instruct:free</code>
+                    </small>
+                </div>
+                <div id="openrouter-feedback" style="display:none; margin-bottom:12px; font-size:0.85rem; padding:8px 12px; border-radius:6px;"></div>
+                <div class="modal-footer" style="padding:0; border:none; display:flex; justify-content:flex-end; gap:8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="closeOpenRouterModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary btn-sm" id="btn-save-openrouter-key">
+                        <i class="fa-solid fa-check"></i> Save & Activate
                     </button>
                 </div>
             </form>

@@ -36,6 +36,7 @@ from ingestion.google_weather import google_weather_connector
 from ingestion.citizen_handler import citizen_handler
 from ingestion.live_scraper import live_scraper
 from ml.feedback import feedback_manager
+from ml.openrouter_forecast import openrouter_forecast_service
 from seed import seed_database
 from data.india_districts import (
     ALL_STATES,
@@ -148,7 +149,9 @@ def index():
     return render_template(
         "index.html",
         categories=config.WEATHER_CATEGORIES,
+        states=ALL_STATES,
         all_states=ALL_STATES,
+        cities=list(config.MAJOR_INDIAN_CITIES.keys()),
         districts_by_state=districts_by_state,
         district_suggestions=DISTRICT_SUGGESTIONS,
         initial_state=initial_weather.get("state", initial_state),
@@ -509,6 +512,79 @@ def api_live_weather():
         return jsonify({"error": "Unable to fetch live weather telemetry."}), 502
     return jsonify({"success": True, "data": data})
 
+@app.route("/api/weather/ai-forecast", methods=["GET", "POST"])
+def api_weather_ai_forecast():
+    """
+    Generates intelligent AI meteorological analysis, risk classification,
+    hazard alerts, and public safety advisories powered by OpenRouter.
+    """
+    state = request.args.get("state")
+    district = request.args.get("district")
+    city = request.args.get("city")
+    lat_val = request.args.get("lat")
+    lon_val = request.args.get("lon")
+    force = request.args.get("force", "false").lower() in ("true", "1", "yes")
+
+    lat = float(lat_val) if lat_val else None
+    lon = float(lon_val) if lon_val else None
+
+    # Retrieve live sensor observation
+    weather_data = google_weather_connector.get_live_weather(
+        city_name=city,
+        lat=lat,
+        lon=lon,
+        state_name=state,
+        district_name=district,
+        force_refresh=force
+    )
+
+    if not weather_data:
+        return jsonify({"success": False, "error": "Unable to retrieve meteorological telemetry for location."}), 502
+
+    analysis = openrouter_forecast_service.generate_weather_forecast(weather_data, force_refresh=force)
+    return jsonify({
+        "success": True,
+        "city": weather_data.get("city"),
+        "state": weather_data.get("state"),
+        "data": analysis
+    })
+
+@app.route("/api/weather/set-openrouter-key", methods=["POST"])
+def api_weather_set_openrouter_key():
+    """Enables setting or updating the OpenRouter API Key and model dynamically."""
+    data = request.get_json(silent=True) or request.form
+    key = (data.get("key") or "").strip()
+    model = (data.get("model") or "").strip()
+
+    if key:
+        config.OPENROUTER_API_KEY = key
+    if model:
+        config.OPENROUTER_MODEL = model
+
+    # Update local .env if it exists
+    env_path = config.BASE_DIR / ".env"
+    if env_path.exists():
+        import re
+        content = env_path.read_text(encoding="utf-8")
+        if key:
+            if re.search(r"^OPENROUTER_API_KEY=.*$", content, re.MULTILINE):
+                content = re.sub(r"^OPENROUTER_API_KEY=.*$", f"OPENROUTER_API_KEY={key}", content, flags=re.MULTILINE)
+            else:
+                content += f"\nOPENROUTER_API_KEY={key}\n"
+        if model:
+            if re.search(r"^OPENROUTER_MODEL=.*$", content, re.MULTILINE):
+                content = re.sub(r"^OPENROUTER_MODEL=.*$", f"OPENROUTER_MODEL={model}", content, flags=re.MULTILINE)
+            else:
+                content += f"\nOPENROUTER_MODEL={model}\n"
+        env_path.write_text(content, encoding="utf-8")
+
+    return jsonify({
+        "success": True,
+        "message": "OpenRouter configuration saved successfully!",
+        "has_key": bool(config.OPENROUTER_API_KEY),
+        "model": config.OPENROUTER_MODEL
+    })
+
 @app.route("/api/weather/provider", methods=["GET"])
 def api_weather_provider():
     """Returns active meteorological engine and Google Maps Platform connection status."""
@@ -692,8 +768,26 @@ def api_retrain_feedback():
 
 @app.route("/api/export/csv", methods=["GET"])
 def export_csv():
-    """Exports filtered weather reports as CSV."""
-    reports = query_reports(limit=1000)
+    """Exports filtered weather reports as CSV matching current filter criteria."""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    state = request.args.get("state")
+    city = request.args.get("city")
+    status = request.args.get("status")
+    source_type = request.args.get("source_type")
+    categories_raw = request.args.get("categories")
+    categories = [c.strip() for c in categories_raw.split(",") if c.strip()] if categories_raw else None
+
+    reports = query_reports(
+        start_date=start_date,
+        end_date=end_date,
+        state=state,
+        city=city,
+        status=status,
+        source_type=source_type,
+        categories=categories,
+        limit=5000
+    )
     output = io.StringIO()
     writer = csv.writer(output)
 

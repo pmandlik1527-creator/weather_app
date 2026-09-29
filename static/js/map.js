@@ -467,44 +467,197 @@ function updateKPIs(summary) {
 }
 
 // Filter Listeners
+let activeRadiusFilter = null;
+
 function setupFilters() {
-    const filterIds = ["filter-time", "filter-state", "filter-city", "filter-status", "filter-source"];
+    const filterIds = ["filter-city", "filter-status", "filter-source"];
     filterIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener("change", () => loadDashboardData());
     });
 
-    // Category chips
+    // 1. Enhanced Date & Time Filtering
+    const timeSelect = document.getElementById("filter-time");
+    const customDateGroup = document.getElementById("custom-date-group");
+    const dateFromInput = document.getElementById("filter-date-from");
+    const dateToInput = document.getElementById("filter-date-to");
+    const applyDateBtn = document.getElementById("btn-apply-custom-date");
+
+    if (timeSelect) {
+        timeSelect.addEventListener("change", (e) => {
+            if (e.target.value === "custom") {
+                if (customDateGroup) customDateGroup.style.display = "flex";
+                const today = new Date();
+                const past7 = new Date(today.getTime() - 7 * 24 * 3600 * 1000);
+                if (dateToInput && !dateToInput.value) {
+                    dateToInput.value = today.toISOString().split("T")[0];
+                }
+                if (dateFromInput && !dateFromInput.value) {
+                    dateFromInput.value = past7.toISOString().split("T")[0];
+                }
+            } else {
+                if (customDateGroup) customDateGroup.style.display = "none";
+                loadDashboardData();
+            }
+        });
+    }
+
+    if (applyDateBtn) {
+        applyDateBtn.addEventListener("click", () => {
+            loadDashboardData();
+        });
+    }
+
+    if (dateFromInput) {
+        dateFromInput.addEventListener("change", () => {
+            if (timeSelect && timeSelect.value === "custom" && dateToInput && dateToInput.value) {
+                loadDashboardData();
+            }
+        });
+    }
+
+    if (dateToInput) {
+        dateToInput.addEventListener("change", () => {
+            if (timeSelect && timeSelect.value === "custom" && dateFromInput && dateFromInput.value) {
+                loadDashboardData();
+            }
+        });
+    }
+
+    // 2. Event-Wise Filtering (Dropdown & Category Chips Two-Way Sync)
+    const categorySelect = document.getElementById("filter-category");
     const chips = document.querySelectorAll(".category-chips .chip");
+
+    if (categorySelect) {
+        categorySelect.addEventListener("change", (e) => {
+            const chosen = e.target.value;
+            chips.forEach(c => {
+                if (chosen === "all") {
+                    if (c.getAttribute("data-category") === "ALL") c.classList.add("active");
+                    else c.classList.remove("active");
+                } else {
+                    if (c.getAttribute("data-category") === chosen) c.classList.add("active");
+                    else c.classList.remove("active");
+                }
+            });
+            loadDashboardData();
+        });
+    }
+
     chips.forEach(chip => {
         chip.addEventListener("click", () => {
             const cat = chip.getAttribute("data-category");
             if (cat === "ALL") {
                 chips.forEach(c => c.classList.remove("active"));
                 chip.classList.add("active");
+                if (categorySelect) categorySelect.value = "all";
             } else {
                 document.querySelector('.chip[data-category="ALL"]')?.classList.remove("active");
                 chip.classList.toggle("active");
-                // If none selected, re-activate ALL
                 const anyActive = Array.from(chips).some(c => c.classList.contains("active") && c.getAttribute("data-category") !== "ALL");
                 if (!anyActive) {
                     document.querySelector('.chip[data-category="ALL"]')?.classList.add("active");
+                    if (categorySelect) categorySelect.value = "all";
+                } else {
+                    if (categorySelect) categorySelect.value = cat;
                 }
             }
             loadDashboardData();
         });
     });
 
-    // Reset button
+    // 3. Location-Wise Filtering (State -> District Dynamic Population & GPS Radius)
+    const stateSelect = document.getElementById("filter-state");
+    const citySelect = document.getElementById("filter-city");
+    const nearMeBtn = document.getElementById("btn-filter-near-me");
+
+    // Load districtsMap if empty
+    if (Object.keys(districtsMap).length === 0) {
+        const dataEl = document.getElementById("districts-data");
+        if (dataEl) {
+            try { districtsMap = JSON.parse(dataEl.textContent); } catch(e) {}
+        }
+    }
+
+    if (stateSelect) {
+        stateSelect.addEventListener("change", (e) => {
+            const selectedState = e.target.value;
+            if (citySelect) {
+                if (selectedState && selectedState !== "all" && districtsMap[selectedState]) {
+                    const dists = districtsMap[selectedState];
+                    citySelect.innerHTML = `<option value="all">All Districts (${selectedState})</option>` +
+                        dists.map(d => `<option value="${d}">${d}</option>`).join("");
+                } else {
+                    citySelect.innerHTML = `<option value="all">All Districts</option>`;
+                }
+            }
+            loadDashboardData();
+        });
+    }
+
+    if (nearMeBtn) {
+        nearMeBtn.addEventListener("click", () => {
+            if (!navigator.geolocation) {
+                alert("Geolocation is not supported by your browser.");
+                return;
+            }
+            nearMeBtn.disabled = true;
+            nearMeBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Locating...`;
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const lat = pos.coords.latitude;
+                    const lon = pos.coords.longitude;
+                    activeRadiusFilter = { lat, lon, radius_km: 50 };
+
+                    if (userRadiusCircle && map) map.removeLayer(userRadiusCircle);
+                    if (map) {
+                        userRadiusCircle = L.circle([lat, lon], {
+                            radius: 50000,
+                            color: "#0284c7",
+                            fillColor: "#38bdf8",
+                            fillOpacity: 0.15,
+                            weight: 2
+                        }).addTo(map);
+                        map.flyTo([lat, lon], 9);
+                    }
+
+                    nearMeBtn.disabled = false;
+                    nearMeBtn.classList.remove("btn-outline-secondary");
+                    nearMeBtn.classList.add("btn-primary");
+                    nearMeBtn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Near Me (50km)`;
+                    loadDashboardData();
+                },
+                (err) => {
+                    alert("Could not retrieve GPS coordinates: " + err.message);
+                    nearMeBtn.disabled = false;
+                    nearMeBtn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Near Me`;
+                }
+            );
+        });
+    }
+
+    // 4. Reset Button
     document.getElementById("btn-reset-filters")?.addEventListener("click", () => {
         filterIds.forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = "all";
         });
-        document.getElementById("filter-time").value = "all";
+        if (stateSelect) stateSelect.value = "all";
+        if (citySelect) citySelect.innerHTML = `<option value="all">All Districts</option>`;
+        if (categorySelect) categorySelect.value = "all";
+        if (timeSelect) timeSelect.value = "24h";
+        if (customDateGroup) customDateGroup.style.display = "none";
+        if (dateFromInput) dateFromInput.value = "";
+        if (dateToInput) dateToInput.value = "";
+        if (nearMeBtn) {
+            nearMeBtn.classList.remove("btn-primary");
+            nearMeBtn.classList.add("btn-outline-secondary");
+            nearMeBtn.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Near Me`;
+        }
+        activeRadiusFilter = null;
         chips.forEach(c => c.classList.remove("active"));
         document.querySelector('.chip[data-category="ALL"]')?.classList.add("active");
-        if (userRadiusCircle) map.removeLayer(userRadiusCircle);
+        if (userRadiusCircle && map) map.removeLayer(userRadiusCircle);
         loadDashboardData();
     });
 }
@@ -512,6 +665,7 @@ function setupFilters() {
 function getActiveFilterParams() {
     const params = new URLSearchParams();
 
+    // Time filtering
     const timeVal = document.getElementById("filter-time")?.value;
     if (timeVal && timeVal !== "all") {
         const now = new Date();
@@ -521,17 +675,42 @@ function getActiveFilterParams() {
         } else if (timeVal === "today") {
             const todayStr = now.toISOString().split("T")[0] + "T00:00:00";
             params.set("start_date", todayStr);
+        } else if (timeVal === "yesterday") {
+            const yStart = new Date(now.getTime() - 24 * 3600 * 1000);
+            const yDateStr = yStart.toISOString().split("T")[0];
+            params.set("start_date", `${yDateStr}T00:00:00`);
+            params.set("end_date", `${yDateStr}T23:59:59`);
         } else if (timeVal === "7d") {
             const cutoff = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
             params.set("start_date", cutoff.toISOString());
+        } else if (timeVal === "30d") {
+            const cutoff = new Date(now.getTime() - 30 * 24 * 3600 * 1000);
+            params.set("start_date", cutoff.toISOString());
+        } else if (timeVal === "custom") {
+            const fromVal = document.getElementById("filter-date-from")?.value;
+            const toVal = document.getElementById("filter-date-to")?.value;
+            if (fromVal) {
+                params.set("start_date", `${fromVal}T00:00:00`);
+            }
+            if (toVal) {
+                params.set("end_date", `${toVal}T23:59:59`);
+            }
         }
     }
 
+    // Location: State & District/City
     const state = document.getElementById("filter-state")?.value;
     if (state && state !== "all") params.set("state", state);
 
     const city = document.getElementById("filter-city")?.value;
     if (city && city !== "all") params.set("city", city);
+
+    // Location: GPS Radius
+    if (activeRadiusFilter) {
+        params.set("lat", activeRadiusFilter.lat);
+        params.set("lon", activeRadiusFilter.lon);
+        params.set("radius_km", activeRadiusFilter.radius_km);
+    }
 
     const status = document.getElementById("filter-status")?.value;
     if (status && status !== "all") params.set("status", status);
@@ -539,15 +718,26 @@ function getActiveFilterParams() {
     const source = document.getElementById("filter-source")?.value;
     if (source && source !== "all") params.set("source_type", source);
 
-    // Selected categories
-    const allChipActive = document.querySelector('.chip[data-category="ALL"]')?.classList.contains("active");
-    if (!allChipActive) {
-        const activeChips = Array.from(document.querySelectorAll(".category-chips .chip.active"))
-            .map(c => c.getAttribute("data-category"))
-            .filter(Boolean);
-        if (activeChips.length > 0) {
-            params.set("categories", activeChips.join(","));
+    // Event Category filtering (from dropdown or active chips)
+    const catSelect = document.getElementById("filter-category")?.value;
+    if (catSelect && catSelect !== "all") {
+        params.set("categories", catSelect);
+    } else {
+        const allChipActive = document.querySelector('.chip[data-category="ALL"]')?.classList.contains("active");
+        if (!allChipActive) {
+            const activeChips = Array.from(document.querySelectorAll(".category-chips .chip.active"))
+                .map(c => c.getAttribute("data-category"))
+                .filter(Boolean);
+            if (activeChips.length > 0) {
+                params.set("categories", activeChips.join(","));
+            }
         }
+    }
+
+    // Keep CSV download button in sync with active filters
+    const csvExportBtn = document.querySelector('a[href^="/api/export/csv"]');
+    if (csvExportBtn) {
+        csvExportBtn.href = `/api/export/csv?${params.toString()}`;
     }
 
     return params;
@@ -740,15 +930,99 @@ function closeInsatModal() {
     }
 }
 
+// OpenRouter Modal Controls
+function openOpenRouterModal() {
+    const modal = document.getElementById("openrouter-config-modal");
+    if (modal) {
+        modal.style.display = "flex";
+        document.body.style.overflow = "hidden";
+    }
+}
+
+function closeOpenRouterModal() {
+    const modal = document.getElementById("openrouter-config-modal");
+    if (modal) {
+        modal.style.display = "none";
+        document.body.style.overflow = "";
+    }
+}
+
+async function saveOpenRouterKey(e) {
+    if (e && e.preventDefault) e.preventDefault();
+    const keyInput = document.getElementById("input-openrouter-key");
+    const modelInput = document.getElementById("input-openrouter-model");
+    const feedback = document.getElementById("openrouter-feedback");
+    const submitBtn = document.getElementById("btn-save-openrouter-key");
+
+    const key = keyInput ? keyInput.value.trim() : "";
+    const model = modelInput ? modelInput.value.trim() : "google/gemini-2.5-flash";
+
+    if (!key) {
+        if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "rgba(239, 68, 68, 0.15)";
+            feedback.style.color = "#ef4444";
+            feedback.textContent = "Please enter a valid OpenRouter API Key.";
+        }
+        return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const res = await fetch("/api/weather/set-openrouter-key", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ key, model })
+        });
+        const data = await res.json();
+        if (data.success) {
+            if (feedback) {
+                feedback.style.display = "block";
+                feedback.style.background = "rgba(16, 185, 129, 0.15)";
+                feedback.style.color = "#10b981";
+                feedback.textContent = "OpenRouter key activated! Regenerating AI forecast...";
+            }
+            setTimeout(() => {
+                closeOpenRouterModal();
+                if (latestActiveWeatherData) {
+                    fetchAndDisplayAIForecast(latestActiveWeatherData, true);
+                }
+            }, 1200);
+        } else {
+            throw new Error(data.error || "Failed to update configuration");
+        }
+    } catch (err) {
+        if (feedback) {
+            feedback.style.display = "block";
+            feedback.style.background = "rgba(239, 68, 68, 0.15)";
+            feedback.style.color = "#ef4444";
+            feedback.textContent = `Error: ${err.message}`;
+        }
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
+window.openOpenRouterModal = openOpenRouterModal;
+window.closeOpenRouterModal = closeOpenRouterModal;
+window.saveOpenRouterKey = saveOpenRouterKey;
+
 // Global modal dismiss listeners
 document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeInsatModal();
+    if (e.key === "Escape") {
+        closeInsatModal();
+        closeOpenRouterModal();
+    }
 });
 
 document.addEventListener("click", (e) => {
-    const modal = document.getElementById("insat-photo-modal");
-    if (modal && e.target === modal) {
+    const insatModal = document.getElementById("insat-photo-modal");
+    if (insatModal && e.target === insatModal) {
         closeInsatModal();
+    }
+    const orModal = document.getElementById("openrouter-config-modal");
+    if (orModal && e.target === orModal) {
+        closeOpenRouterModal();
     }
 });
 
@@ -871,10 +1145,96 @@ async function fetchAndDisplayLiveWeather(city = null, lat = null, lon = null, s
             } catch (e) {}
         }
 
+        // Trigger OpenRouter AI Meteorological Intelligence Forecast
+        latestActiveWeatherData = data;
+        fetchAndDisplayAIForecast(data, false);
+
     } catch (err) {
         console.error("[LIVE WEATHER] Fetch error:", err);
     }
 }
+
+let latestActiveWeatherData = null;
+
+async function fetchAndDisplayAIForecast(liveData, forceRefresh = false) {
+    if (!liveData) return;
+    latestActiveWeatherData = liveData;
+
+    const synopsisEl = document.getElementById("ai-synopsis-text");
+    const hazardListEl = document.getElementById("ai-hazard-list");
+    const advisoryListEl = document.getElementById("ai-advisory-list");
+    const synopticEl = document.getElementById("ai-synoptic-text");
+    const modelBadge = document.getElementById("ai-model-badge");
+    const hazardBadge = document.getElementById("ai-hazard-badge");
+    const refreshBtn = document.getElementById("btn-refresh-ai-forecast");
+
+    if (refreshBtn) refreshBtn.classList.add("spinning");
+    if (hazardBadge) hazardBadge.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating AI Forecast...`;
+
+    try {
+        let url = `/api/weather/ai-forecast?state=${encodeURIComponent(liveData.state || '')}&district=${encodeURIComponent(liveData.city || '')}`;
+        if (liveData.latitude && liveData.longitude) {
+            url += `&lat=${liveData.latitude}&lon=${liveData.longitude}`;
+        }
+        if (forceRefresh) url += `&force=true&_t=${Date.now()}`;
+
+        const res = await fetch(url);
+        if (!res.ok) throw new Error("AI forecast service unavailable");
+        const json = await res.json();
+        const ai = json.data;
+        if (!ai) return;
+
+        if (synopsisEl) synopsisEl.textContent = ai.summary || "No meteorological synopsis available.";
+        if (synopticEl) synopticEl.textContent = ai.synoptic_analysis || "Stable atmospheric boundary layer.";
+
+        if (modelBadge) {
+            const shortModel = (ai.model || "OpenRouter").split("/").pop();
+            modelBadge.innerHTML = `<i class="fa-solid fa-microchip"></i> ${shortModel}`;
+            modelBadge.title = `Model: ${ai.model} | Provider: ${ai.provider}`;
+        }
+
+        if (hazardBadge) {
+            hazardBadge.textContent = ai.hazard_badge || "🟢 Favorable Conditions";
+            if (ai.hazard_level === "Severe") {
+                hazardBadge.className = "badge-hazard-alert hazard-severe";
+            } else if (ai.hazard_level === "High") {
+                hazardBadge.className = "badge-hazard-alert hazard-high";
+            } else if (ai.hazard_level === "Moderate") {
+                hazardBadge.className = "badge-hazard-alert hazard-moderate";
+            } else {
+                hazardBadge.className = "badge-hazard-alert hazard-low";
+            }
+        }
+
+        if (hazardListEl) {
+            if (ai.key_hazards && ai.key_hazards.length > 0) {
+                hazardListEl.innerHTML = ai.key_hazards.map(h => `
+                    <li><i class="fa-solid fa-triangle-exclamation text-amber"></i> ${h}</li>
+                `).join("");
+            } else {
+                hazardListEl.innerHTML = `<li><i class="fa-solid fa-circle-check text-success"></i> No hazardous alerts active.</li>`;
+            }
+        }
+
+        if (advisoryListEl) {
+            if (ai.advisories && ai.advisories.length > 0) {
+                advisoryListEl.innerHTML = ai.advisories.map(a => `
+                    <li><i class="fa-solid fa-shield-halved text-cyan"></i> ${a}</li>
+                `).join("");
+            } else {
+                advisoryListEl.innerHTML = `<li><i class="fa-solid fa-check text-info"></i> Normal transit and outdoor activities permitted.</li>`;
+            }
+        }
+
+    } catch (err) {
+        console.warn("[AI FORECAST] Error fetching OpenRouter forecast:", err);
+        if (hazardBadge) hazardBadge.textContent = "AI Analysis Offline";
+    } finally {
+        if (refreshBtn) refreshBtn.classList.remove("spinning");
+    }
+}
+
+window.fetchAndDisplayAIForecast = fetchAndDisplayAIForecast;
 
 function initLiveWeatherCard() {
     const stateSelect = document.getElementById("live-weather-state-select");
@@ -1079,6 +1439,19 @@ function initLiveWeatherCard() {
             });
             if (radarDeck && radarDeck.style.display !== "none") {
                 loadStateDistrictRadar(currentState);
+            }
+        });
+    }
+
+    const refreshAiBtn = document.getElementById("btn-refresh-ai-forecast");
+    if (refreshAiBtn) {
+        refreshAiBtn.addEventListener("click", () => {
+            if (latestActiveWeatherData) {
+                fetchAndDisplayAIForecast(latestActiveWeatherData, true);
+            } else {
+                const currentState = stateSelect ? stateSelect.value : "Maharashtra";
+                const currentDist = distSelect ? distSelect.value : "Pune";
+                fetchAndDisplayLiveWeather(currentDist, null, null, currentState, currentDist);
             }
         });
     }
