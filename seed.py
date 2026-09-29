@@ -38,20 +38,28 @@ def seed_database():
     except Exception as e:
         print(f"[SEED] Mock purge notice: {e}")
 
-    # Purge legacy mock data from Supabase if connected
+    # Purge legacy mock data from Supabase if connected and ensure genuine records exist
     try:
         from database.supabase_client import is_supabase_available, get_supabase_client
+        from database.supabase_repo import supabase_insert_report
         if is_supabase_available():
             client = get_supabase_client()
             client.table("weather_reports").delete().ilike("raw_text", "%mock%").execute()
             client.table("weather_reports").delete().ilike("raw_text", "%synthetic%").execute()
             client.table("weather_reports").delete().ilike("raw_text", "%#Test%").execute()
+
+            # Check if Supabase needs genuine observations seeded
+            supa_chk = client.table("weather_reports").select("id").limit(1).execute()
+            if not supa_chk.data:
+                for r in seed_reports:
+                    supabase_insert_report(r)
+                print(f"[SEED] Synced {len(seed_reports)} genuine ground-truth observations to Supabase.")
     except Exception as e:
-        print(f"[SEED] Supabase mock purge notice: {e}")
+        print(f"[SEED] Supabase mock purge/seed notice: {e}")
 
     inserted_count = 0
     for r in seed_reports:
-        # Check if already inserted
+        # Check if already inserted in SQLite
         from database.db import get_connection
         conn = get_connection()
         cur = conn.cursor()
