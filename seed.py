@@ -28,7 +28,7 @@ def seed_database():
     with open(seed_file, "r", encoding="utf-8") as f:
         seed_reports = json.load(f)
 
-    # Purge any legacy mock or synthetic test data
+    # Purge any legacy mock or synthetic test data from SQLite
     try:
         from database.db import get_connection
         conn = get_connection()
@@ -37,6 +37,17 @@ def seed_database():
         conn.commit()
     except Exception as e:
         print(f"[SEED] Mock purge notice: {e}")
+
+    # Purge legacy mock data from Supabase if connected
+    try:
+        from database.supabase_client import is_supabase_available, get_supabase_client
+        if is_supabase_available():
+            client = get_supabase_client()
+            client.table("weather_reports").delete().ilike("raw_text", "%mock%").execute()
+            client.table("weather_reports").delete().ilike("raw_text", "%synthetic%").execute()
+            client.table("weather_reports").delete().ilike("raw_text", "%#Test%").execute()
+    except Exception as e:
+        print(f"[SEED] Supabase mock purge notice: {e}")
 
     inserted_count = 0
     for r in seed_reports:

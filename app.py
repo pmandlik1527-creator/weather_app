@@ -703,6 +703,47 @@ def api_weather_stations():
     stations = google_weather_connector.get_all_live_stations(force_refresh=force)
     return jsonify({"success": True, "stations": stations})
 
+@app.route("/api/weather/diagnostics", methods=["GET"])
+def api_weather_diagnostics():
+    """Diagnostic probe testing live connectivity to all meteorological feeds."""
+    import time
+    diag = {}
+
+    # 1. Test Open-Meteo
+    t0 = time.time()
+    try:
+        om_resp = open_weather_connector.session.get(
+            "https://api.open-meteo.com/v1/forecast?latitude=18.52&longitude=73.86&current=temperature_2m,relative_humidity_2m&timezone=Asia/Kolkata",
+            timeout=8.0
+        )
+        diag["open_meteo"] = {
+            "status_code": om_resp.status_code,
+            "elapsed_ms": round((time.time() - t0) * 1000, 1),
+            "ok": (om_resp.status_code == 200),
+            "data_sample": om_resp.json().get("current") if om_resp.status_code == 200 else om_resp.text[:100]
+        }
+    except Exception as e:
+        diag["open_meteo"] = {"ok": False, "error": str(e), "elapsed_ms": round((time.time() - t0) * 1000, 1)}
+
+    # 2. Test wttr.in
+    t0 = time.time()
+    try:
+        wttr_resp = open_weather_connector.session.get("https://wttr.in/18.52,73.86?format=j1", timeout=8.0)
+        diag["wttr_in"] = {
+            "status_code": wttr_resp.status_code,
+            "elapsed_ms": round((time.time() - t0) * 1000, 1),
+            "ok": (wttr_resp.status_code == 200),
+            "temp_C": wttr_resp.json().get("current_condition", [{}])[0].get("temp_C") if wttr_resp.status_code == 200 else None
+        }
+    except Exception as e:
+        diag["wttr_in"] = {"ok": False, "error": str(e), "elapsed_ms": round((time.time() - t0) * 1000, 1)}
+
+    # 3. Live Weather for Pune
+    pune_live = google_weather_connector.get_live_weather(city_name="Pune", force_refresh=True)
+    diag["pune_live_sample"] = pune_live
+
+    return jsonify({"success": True, "diagnostics": diag})
+
 
 # ==========================================
 # Admin & Moderation Controls
